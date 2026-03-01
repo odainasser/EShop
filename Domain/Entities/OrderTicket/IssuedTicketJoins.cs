@@ -1,6 +1,6 @@
 ﻿namespace Eshop.Domain.Entities.OrderTicket;
 
-public class IssuedTicketJoins : BaseEntity, IId<long>, ISectionEntity
+public class IssuedTicketJoins : BaseAuditableEntity, IId<long>, ISectionEntity
 {
     public long Id { get; set; }
     public int? GroupCount { get; set; }

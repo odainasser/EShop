@@ -1,4 +1,4 @@
-using Api.Authorization;
+// Api.Authorization removed — permissions module deprecated
 using Api.Filters;
 using Application.Common.Models;
 using Application.Features.Users;
@@ -29,11 +29,9 @@ public static class UserEndpoints
             return Results.Ok(users);
         })
         .WithName("GetAllUsers")
-        .WithSummary("Get all users - Requires users.read permission")
+        .WithSummary("Get all users")
         .Produces<PaginatedList<UserResponse>>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersRead));
+        .RequireAuthorization();
 
         group.MapGet("/active", async (
             [FromServices] IUserService userService,
@@ -43,11 +41,9 @@ public static class UserEndpoints
             return Results.Ok(users);
         })
         .WithName("GetActiveUsers")
-        .WithSummary("Get all active users - Requires users.read permission")
+        .WithSummary("Get all active users")
         .Produces<IEnumerable<UserResponse>>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersRead));
+        .RequireAuthorization();
 
         group.MapGet("/exists", async (
             [FromQuery] string email,
@@ -60,8 +56,7 @@ public static class UserEndpoints
         .WithName("CheckUserExists")
         .WithSummary("Check if user exists by email")
         .Produces(StatusCodes.Status200OK)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersRead));
+        .RequireAuthorization();
 
         group.MapGet("/{id:guid}", async (
             Guid id,
@@ -72,12 +67,10 @@ public static class UserEndpoints
             return user == null ? Results.NotFound() : Results.Ok(user);
         })
         .WithName("GetUserById")
-        .WithSummary("Get user by ID - Requires users.read permission")
+        .WithSummary("Get user by ID")
         .Produces<UserResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersRead));
+        .RequireAuthorization();
 
         group.MapPut("/profile", async (
             [FromBody] UpdateUserRequest request,
@@ -112,14 +105,12 @@ public static class UserEndpoints
             return Results.Created($"/api/users/{user.Id}", user);
         })
         .WithName("CreateUser")
-        .WithSummary("Create a new user - Requires users.write permission")
+        .WithSummary("Create a new user")
         .AddEndpointFilter<ValidationFilter<CreateUserRequest>>()
         .Produces<UserResponse>(StatusCodes.Status201Created)
         .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status403Forbidden)
         .ProducesValidationProblem()
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersWrite));
+        .RequireAuthorization();
 
         group.MapPut("/{id:guid}", async (
             Guid id,
@@ -131,15 +122,13 @@ public static class UserEndpoints
             return Results.Ok(user);
         })
         .WithName("UpdateUser")
-        .WithSummary("Update an existing user - Requires users.write permission")
+        .WithSummary("Update an existing user")
         .AddEndpointFilter<ValidationFilter<UpdateUserRequest>>()
         .Produces<UserResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status403Forbidden)
         .ProducesValidationProblem()
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersWrite));
+        .RequireAuthorization();
 
         group.MapDelete("/{id:guid}", async (
             Guid id,
@@ -150,12 +139,10 @@ public static class UserEndpoints
             return Results.NoContent();
         })
         .WithName("DeleteUser")
-        .WithSummary("Delete a user - Requires users.delete permission")
+        .WithSummary("Delete a user")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersDelete));
+        .RequireAuthorization();
 
         group.MapPost("/{id:guid}/roles", async (
             Guid id,
@@ -167,11 +154,9 @@ public static class UserEndpoints
             return Results.Ok(user);
         })
         .WithName("AssignRolesToUser")
-        .WithSummary("Assign roles to a user - Requires users.write permission")
+        .WithSummary("Assign roles to a user")
         .Produces<UserResponse>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status404NotFound)
-        .Produces(StatusCodes.Status403Forbidden)
-        .RequireAuthorization()
-        .WithMetadata(new RequirePermissionAttribute(Permissions.UsersWrite));
+        .RequireAuthorization();
     }
 }

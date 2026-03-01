@@ -1,6 +1,6 @@
 ﻿namespace Eshop.Domain.Entities.OrderTicket;
 
-public class IssuedTickets : BaseEntity, IId<long>
+public class IssuedTickets : BaseAuditableEntity, IId<long>
 {
     public IssuedTickets()
     {

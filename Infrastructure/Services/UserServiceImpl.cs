@@ -6,8 +6,6 @@ using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Domain.Constants;
-using Application.Features.UserLogs;
-using Domain.Enums;
 using Application.Common.Interfaces;
 using Application.Common.Behaviors;
 using FluentValidation.Results;
@@ -18,22 +16,16 @@ public class UserService : IUserService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    private readonly IUserLogService _userLogService;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IMediaService _mediaService;
 
     public UserService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IUserLogService userLogService,
-        ICurrentUserService currentUserService,
-        IMediaService mediaService)
+        ICurrentUserService currentUserService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
-        _userLogService = userLogService;
         _currentUserService = currentUserService;
-        _mediaService = mediaService;
     }
 
     public async Task<PaginatedList<UserResponse>> GetAllUsersAsync(int pageNumber, int pageSize, string? role = null, string? excludeRole = null, CancellationToken cancellationToken = default)
@@ -154,19 +146,6 @@ public class UserService : IUserService
             }
         }
 
-        var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
-        if (currentUserId != Guid.Empty)
-        {
-            await _userLogService.LogAsync(new CreateUserLogRequest
-            {
-                UserId = currentUserId,
-                UserName = currentUserName,
-                Action = AuditAction.Created,
-                EntityName = "User",
-                EntityId = user.Id.ToString()
-            });
-        }
-
         var roles = await _userManager.GetRolesAsync(user);
         return await MapToUserResponseAsync(user, roles.ToList());
     }
@@ -180,7 +159,7 @@ public class UserService : IUserService
         }
 
         // Get current user to check if they're updating themselves
-        var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
+        var (currentUserId, _) = await _currentUserService.GetCurrentUserAsync();
         var isSelfUpdate = currentUserId == userId;
 
         // Prevent modifying system users by other users (but allow self-update)
@@ -214,18 +193,6 @@ public class UserService : IUserService
             throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
         }
 
-        if (currentUserId != Guid.Empty)
-        {
-            await _userLogService.LogAsync(new CreateUserLogRequest
-            {
-                UserId = currentUserId,
-                UserName = currentUserName,
-                Action = AuditAction.Updated,
-                EntityName = "User",
-                EntityId = user.Id.ToString()
-            });
-        }
-
         var roles = await _userManager.GetRolesAsync(user);
         return await MapToUserResponseAsync(user, roles.ToList());
     }
@@ -248,19 +215,6 @@ public class UserService : IUserService
         if (!result.Succeeded)
         {
             throw new InvalidOperationException(string.Join(", ", result.Errors.Select(e => e.Description)));
-        }
-
-        var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
-        if (currentUserId != Guid.Empty)
-        {
-            await _userLogService.LogAsync(new CreateUserLogRequest
-            {
-                UserId = currentUserId,
-                UserName = currentUserName,
-                Action = AuditAction.Deleted,
-                EntityName = "User",
-                EntityId = user.Id.ToString()
-            });
         }
     }
 
@@ -304,19 +258,6 @@ public class UserService : IUserService
             }
         }
 
-        var (currentUserId, currentUserName) = await _currentUserService.GetCurrentUserAsync();
-        if (currentUserId != Guid.Empty)
-        {
-            await _userLogService.LogAsync(new CreateUserLogRequest
-            {
-                UserId = currentUserId,
-                UserName = currentUserName,
-                Action = AuditAction.Updated,
-                EntityName = "User",
-                EntityId = user.Id.ToString()
-            });
-        }
-
         var roles = await _userManager.GetRolesAsync(user);
         return await MapToUserResponseAsync(user, roles.ToList());
     }
@@ -357,19 +298,6 @@ public class UserService : IUserService
         }
 
         string? avatarUrl = null;
-        try
-        {
-            var mediaList = await _mediaService.GetMediaForEntityAsync(user.Id, EntityType.User, "avatar");
-            var avatar = mediaList.FirstOrDefault();
-            if (avatar != null)
-            {
-                avatarUrl = _mediaService.GetMediaUrl(avatar);
-            }
-        }
-        catch
-        {
-            // Ignore media errors during mapping
-        }
 
         return new UserResponse
         {

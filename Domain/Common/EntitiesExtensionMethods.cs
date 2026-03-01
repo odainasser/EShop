@@ -135,7 +135,7 @@ public static class EntitiesExtensionMethods
         if (issuedTickets.DeletedAt != null)
         {
 
-            if (user == null || issuedTickets.DeletedBy == null || issuedTickets.DeletedBy == 0)
+            if (user == null || issuedTickets.DeletedBy == null)
             {
                 result = "SYSTEM";
             }
@@ -463,7 +463,7 @@ public static class EntitiesExtensionMethods
         {
             PaymentTransId = paymentTransactionId,
             IsSuccess = tahseelTran.IsSuccess,
-            CreateAt = tahseelTran.CreateAt,
+            CreatedAt = tahseelTran.CreatedAt,
             TP_RefNo = tahseelTran.TP_RefNo,
             TP_ResultCode = tahseelTran.TP_ResultCode,
             TP_SecHash = tahseelTran.TP_SecHash,

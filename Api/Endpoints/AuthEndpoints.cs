@@ -1,8 +1,12 @@
-using Application.Features.Auth;
-using Application.Services;
-using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
+using Application.Features.Auth;
+using Microsoft.AspNetCore.Identity;
+using Infrastructure.Configuration;
+using Infrastructure.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Api.Endpoints;
 
@@ -10,151 +14,72 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth")
-            .WithTags("Authentication");
-
-        group.MapPost("/register", async (
-            [FromBody] RegisterRequest request,
-            [FromServices] IAuthService authService,
-            [FromServices] IValidator<RegisterRequest> validator) =>
-        {
-            var validationResult = await validator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors
-                    .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
-                    .ToDictionary(
-                        failureGroup => failureGroup.Key,
-                        failureGroup => failureGroup.ToArray());
-
-                return Results.ValidationProblem(
-                    errors,
-                    title: "Validation Failed",
-                    detail: "One or more validation errors occurred.");
-            }
-
-            var response = await authService.RegisterAsync(request);
-            return response.Success
-                ? Results.Ok(response)
-                : Results.BadRequest(response);
-        })
-        .WithName("Register")
-        .WithSummary("Register a new user")
-        .Produces<AuthResponse>(StatusCodes.Status200OK)
-        .Produces<AuthResponse>(StatusCodes.Status400BadRequest)
-        .ProducesValidationProblem();
+        var group = app.MapGroup("/api/auth").WithTags("Authentication");
 
         group.MapPost("/login", async (
             [FromBody] LoginRequest request,
-            [FromServices] IAuthService authService,
-            [FromServices] IValidator<LoginRequest> validator) =>
+            UserManager<ApplicationUser> userManager,
+            RoleManager<ApplicationRole> roleManager,
+            IConfiguration configuration) =>
         {
-            var validationResult = await validator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors
-                    .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
-                    .ToDictionary(
-                        failureGroup => failureGroup.Key,
-                        failureGroup => failureGroup.ToArray());
-
-                return Results.ValidationProblem(
-                    errors,
-                    title: "Validation Failed",
-                    detail: "One or more validation errors occurred.");
-            }
-
-            var response = await authService.LoginAsync(request);
-            return response.Success
-                ? Results.Ok(response)
-                : Results.Unauthorized();
-        })
-        .WithName("Login")
-        .WithSummary("Login with email and password")
-        .Produces<AuthResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status401Unauthorized)
-        .ProducesValidationProblem();
-
-        // Send email confirmation (anonymous or authenticated)
-        group.MapPost("/send-email-confirmation", async (
-            [FromBody] string email,
-            [FromServices] IAuthService authService) =>
-        {
-            var response = await authService.SendEmailConfirmationAsync(email);
-            return response.Success ? Results.Ok(response) : Results.BadRequest(response);
-        })
-        .WithName("SendEmailConfirmation")
-        .WithSummary("Send email confirmation link");
-
-        // Confirm email
-        group.MapPost("/confirm-email", async (
-            [FromBody] ConfirmEmailRequest request,
-            [FromServices] IAuthService authService) =>
-        {
-            var response = await authService.ConfirmEmailAsync(request);
-            return response.Success ? Results.Ok(response) : Results.BadRequest(response);
-        })
-        .WithName("ConfirmEmail")
-        .WithSummary("Confirm user email via token");
-
-        // Forgot password
-        group.MapPost("/forgot-password", async (
-            [FromBody] ForgotPasswordRequest request,
-            [FromServices] IAuthService authService,
-            [FromServices] IValidator<ForgotPasswordRequest> validator) =>
-        {
-            var validationResult = await validator.ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                var errors = validationResult.Errors
-                    .GroupBy(e => e.PropertyName, e => e.ErrorMessage)
-                    .ToDictionary(
-                        failureGroup => failureGroup.Key,
-                        failureGroup => failureGroup.ToArray());
-
-                return Results.ValidationProblem(
-                    errors,
-                    title: "Validation Failed",
-                    detail: "One or more validation errors occurred.");
-            }
-
-            var response = await authService.ForgotPasswordAsync(request);
-            return response.Success ? Results.Ok(response) : Results.BadRequest(response);
-        })
-        .WithName("ForgotPassword")
-        .WithSummary("Request password reset link")
-        .Produces<AuthResponse>(StatusCodes.Status200OK)
-        .Produces<AuthResponse>(StatusCodes.Status400BadRequest)
-        .ProducesValidationProblem();
-
-        // Reset password
-        group.MapPost("/reset-password", async (
-            [FromBody] ResetPasswordRequest request,
-            [FromServices] IAuthService authService) =>
-        {
-            var response = await authService.ResetPasswordAsync(request);
-            return response.Success ? Results.Ok(response) : Results.BadRequest(response);
-        })
-        .WithName("ResetPassword")
-        .WithSummary("Reset password using token");
-
-        // Change password - requires authentication
-        group.MapPost("/change-password", async (
-            [FromBody] ChangePasswordRequest request,
-            HttpContext httpContext,
-            [FromServices] IAuthService authService) =>
-        {
-            var sub = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var userId))
+            var user = await userManager.FindByEmailAsync(request.Email);
+            if (user == null)
             {
                 return Results.Unauthorized();
             }
 
-            var response = await authService.ChangePasswordAsync(userId, request);
-            return response.Success ? Results.Ok(response) : Results.BadRequest(response);
-        })
-        .RequireAuthorization()
-        .WithName("ChangePassword")
-        .WithSummary("Change password for authenticated user");
+            var passwordValid = await userManager.CheckPasswordAsync(user, request.Password);
+            if (!passwordValid)
+            {
+                return Results.Unauthorized();
+            }
+
+            var roles = await userManager.GetRolesAsync(user);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email ?? string.Empty)
+            };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>()
+                              ?? throw new InvalidOperationException("JwtSettings configuration is missing");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: jwtSettings.Issuer,
+                audience: jwtSettings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(jwtSettings.ExpirationInMinutes),
+                signingCredentials: creds);
+
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            var response = new AuthResponse
+            {
+                Success = true,
+                Token = tokenString,
+                User = new UserDto
+                {
+                    Id = Guid.Parse(user.Id.ToString()),
+                    Email = user.Email ?? string.Empty,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    IsActive = user.IsActive,
+                    EmailConfirmed = user.EmailConfirmed,
+                    PhoneNumber = user.PhoneNumber,
+                    Roles = roles.ToList()
+                }
+            };
+
+            return Results.Ok(response);
+        });
     }
 }

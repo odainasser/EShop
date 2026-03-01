@@ -1,10 +1,9 @@
-using Domain.Entities;
 using Domain.Common;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 using Application.Common.Interfaces;
-using Domain.Enums;
 
 namespace Infrastructure.Persistence;
 
@@ -26,167 +25,30 @@ public class ApplicationDbContext
         _currentUserService = currentUserService;
     }
 
-    public DbSet<User> DomainUsers { get; set; }
-    public DbSet<Role> DomainRoles { get; set; }
-    public DbSet<Permission> Permissions { get; set; }
-    public DbSet<UserRole> UserRoles { get; set; }
-    public DbSet<RolePermission> RolePermissions { get; set; }
-    public DbSet<Lookup> Lookups { get; set; }
-    public DbSet<SystemSetting> SystemSettings { get; set; }
-    public DbSet<UserLog> UserLogs { get; set; }
-    public DbSet<Media> Media { get; set; }
-
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
-        // Configure ApplicationRole
+        builder.Entity<ApplicationUser>(entity =>
+        {
+            entity.Property(u => u.Id)
+                .HasConversion(id => id.ToString(), str => Guid.Parse(str));
+            entity.Ignore(u => u.IsSystemUser);
+            entity.Ignore(u => u.CreatedAt);
+            entity.Ignore(u => u.UpdatedAt);
+        });
+
         builder.Entity<ApplicationRole>(entity =>
         {
+            entity.Property(r => r.Id)
+                .HasConversion(id => id.ToString(), str => Guid.Parse(str));
             entity.Property(r => r.DescriptionEn).HasMaxLength(500);
             entity.Property(r => r.DescriptionAr).HasMaxLength(500);
             entity.Property(r => r.IsSystemRole).IsRequired();
+            entity.Ignore(r => r.CreatedAt);
+            entity.Ignore(r => r.UpdatedAt);
         });
-
-        // Configure Lookup entity
-        builder.Entity<Lookup>(entity =>
-        {
-            entity.ToTable("Lookups");
-            entity.HasKey(l => l.Id);
-            entity.Property(l => l.Code).IsRequired().HasMaxLength(50);
-            entity.Property(l => l.NameEn).IsRequired().HasMaxLength(200);
-            entity.Property(l => l.NameAr).IsRequired().HasMaxLength(200).IsUnicode(true);
-            // store enum as string in the database
-            entity.Property(l => l.Type)
-                .IsRequired()
-                .HasMaxLength(50)
-                .HasConversion<string>();
-
-            entity.HasOne(l => l.Parent)
-                .WithMany(l => l.Children)
-                .HasForeignKey(l => l.ParentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(l => !l.IsDeleted);
-        });
-
-        // Configure Domain User entity
-        builder.Entity<User>(entity =>
-        {
-            entity.ToTable("Users");
-            entity.HasKey(u => u.Id);
-            entity.Property(u => u.Email).IsRequired().HasMaxLength(256);
-            entity.HasIndex(u => u.Email).IsUnique();
-            entity.Property(u => u.FirstName).HasMaxLength(100);
-            entity.Property(u => u.LastName).HasMaxLength(100);
-
-            entity.HasQueryFilter(u => !u.IsDeleted);
-        });
-
-        // Configure Domain Role entity
-        builder.Entity<Role>(entity =>
-        {
-            entity.ToTable("Roles");
-            entity.HasKey(r => r.Id);
-            entity.Property(r => r.Name).IsRequired().HasMaxLength(256);
-            entity.HasIndex(r => r.Name).IsUnique();
-        });
-
-        // Configure Permission entity
-        builder.Entity<Permission>(entity =>
-        {
-            entity.ToTable("Permissions");
-            entity.HasKey(p => p.Id);
-            entity.Property(p => p.Code).IsRequired().HasMaxLength(100);
-            entity.HasIndex(p => p.Code).IsUnique();
-            entity.Property(p => p.NameEn).IsRequired().HasMaxLength(256);
-            entity.Property(p => p.NameAr).IsRequired().HasMaxLength(256);
-            entity.Property(p => p.DescriptionEn).HasMaxLength(500);
-            entity.Property(p => p.DescriptionAr).HasMaxLength(500);
-        });
-
-        // Configure UserRole many-to-many
-        builder.Entity<UserRole>(entity =>
-        {
-            entity.ToTable("UserRoles");
-            entity.HasKey(ur => new { ur.UserId, ur.RoleId });
-
-            entity.HasOne(ur => ur.User)
-                .WithMany(u => u.UserRoles)
-                .HasForeignKey(ur => ur.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(ur => ur.Role)
-                .WithMany(r => r.UserRoles)
-                .HasForeignKey(ur => ur.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Configure RolePermission many-to-many
-        builder.Entity<RolePermission>(entity =>
-        {
-            entity.ToTable("RolePermissions");
-            entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
-
-            entity.HasOne(rp => rp.Role)
-                .WithMany(r => r.RolePermissions)
-                .HasForeignKey(rp => rp.RoleId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(rp => rp.Permission)
-                .WithMany(p => p.RolePermissions)
-                .HasForeignKey(rp => rp.PermissionId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Configure SystemSetting entity
-        builder.Entity<SystemSetting>(entity =>
-        {
-            entity.ToTable("SystemSettings");
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.Key).IsUnique();
-            entity.Property(e => e.Key).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Value).IsRequired();
-            entity.Property(e => e.Group).IsRequired().HasMaxLength(50);
-
-            entity.HasQueryFilter(s => !s.IsDeleted);
-        });
-
-        // Configure UserLog entity
-        builder.Entity<UserLog>(entity =>
-        {
-            entity.ToTable("UserLogs");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Action)
-                .IsRequired()
-                .HasMaxLength(50)
-                .HasConversion<string>();
-            entity.Property(e => e.EntityName).HasMaxLength(100);
-            entity.Property(e => e.EntityId).HasMaxLength(100);
-            entity.HasIndex(e => e.UserId);
-            entity.HasIndex(e => e.Timestamp);
-        });
-
-        // Configure Media entity
-        builder.Entity<Media>(entity =>
-        {
-            entity.ToTable("Media");
-            entity.HasKey(m => m.Id);
-            entity.Property(m => m.EntityType).IsRequired().HasMaxLength(100);
-            entity.Property(m => m.EntityId).IsRequired();
-            entity.Property(m => m.CollectionName).IsRequired().HasMaxLength(100);
-            entity.Property(m => m.Name).IsRequired().HasMaxLength(255);
-            entity.Property(m => m.FileName).IsRequired().HasMaxLength(255);
-            entity.Property(m => m.MimeType).HasMaxLength(100);
-            entity.Property(m => m.Disk).HasMaxLength(50);
-            entity.Property(m => m.Path).IsRequired().HasMaxLength(500);
-            
-            entity.HasIndex(m => new { m.EntityType, m.EntityId });
-            entity.HasQueryFilter(m => !m.IsDeleted);
-        });
-
-        // Museum entity removed during cleanup.
-            }
+    }
 
             public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

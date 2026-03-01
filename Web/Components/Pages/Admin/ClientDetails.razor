@@ -1,9 +1,7 @@
 @page "/admin/clients/{ClientId:guid}"
 @attribute [Authorize]
-@attribute [RequirePermission(Permissions.ClientsRead)]
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Forms
-@using Web.Authorization
 @using Web.Components.Common
 @inject IUserManagementService UserService
 @inject IMediaService MediaService

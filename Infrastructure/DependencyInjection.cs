@@ -1,11 +1,9 @@
 using System.Text;
 using Application.Common.Interfaces;
 using Application.Services;
-using Domain.Repositories;
 using Infrastructure.Configuration;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
-using Infrastructure.Repositories;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -95,25 +93,10 @@ public static class DependencyInjection
             };
         });
 
-        // Register repositories
-        services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IUserLogRepository, UserLogRepository>();
-
         // Register infrastructure services
         services.AddHttpContextAccessor();
         services.AddScoped<IAppConfiguration, AppConfiguration>();
-        services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IIdentityService, IdentityService>();
-        services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IRoleService, RoleService>();
-        services.AddScoped<IPermissionService, PermissionService>();
-        services.AddScoped<ILookupService, LookupService>();
-        services.AddScoped<ISystemSettingService, SystemSettingService>();
-        services.AddScoped<IUserLogService, UserLogService>();
-        services.AddScoped<IMediaService, MediaService>();
 
         // Register infrastructure CurrentUserService (uses IHttpContextAccessor only)
         services.AddScoped<Application.Common.Interfaces.ICurrentUserService, CurrentUserService>();

@@ -5,7 +5,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @inject IUserManagementService UserService
-@inject IRoleManagementService RoleService
+@* Role management removed *@
 @inject IMediaService MediaService
 @inject NavigationManager Navigation
 @inject IJsonStringLocalizer Localizer
@@ -15,12 +15,6 @@
 <div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
     <div class="max-w-4xl mx-auto">
         <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
-            <div class="mb-8">
-                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <i class="bi bi-person-plus text-purple-600"></i>
-                    @(IsEditMode ? Localizer["EditUser"] : Localizer["CreateUser"])
-                </h1>
-            </div>
 
             @if (isLoading)
             {
@@ -149,30 +143,56 @@
 
                     <div class="mb-6">
                         <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["PhoneNumber"]</label>
-                        <InputText @bind-Value="model.PhoneNumber" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                        <InputText @bind-Value="model.PhoneNumber"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                                    id="phoneNumber" />
                         <ValidationMessage For="@(() => model.PhoneNumber)" class="text-red-600 text-sm mt-1" />
                     </div>
 
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-3">@Localizer["Role"]</label>
-                        <select @bind="model.RoleId" 
-                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                disabled="@isSystemAdminUser">
-                            <option value="">@Localizer["SelectRole"]</option>
-                            @foreach (var role in availableRoles)
-                            {
-                                // Never allow assigning Client role from admin panel - clients are created via registration only
-                                var isClientRole = string.Equals(role.NameEn, "Client", StringComparison.OrdinalIgnoreCase);
-                                if (isClientRole)
-                                {
-                                    continue;
-                                }
-                                <option value="@role.Id">@(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.NameEn)</option>
-                            }
-                        </select>
-                    </div>
+                    @if (IsEditMode)
+                    {
+                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Checkbox Id="emailConfirmed" @bind-Value="model.EmailConfirmed" Disabled="@isSystemAdminUser" Label="@Localizer["EmailConfirmed"]" />
+                            </div>
+                            <div>
+                                <Checkbox Id="phoneConfirmed" @bind-Value="model.PhoneNumberConfirmed" Disabled="@isSystemAdminUser" Label="@Localizer["PhoneNumberConfirmed"]" />
+                            </div>
+                        </div>
+
+                        @if (currentUser != null)
+                        {
+                            <div class="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                                <h3 class="text-sm font-semibold text-gray-700 mb-3">@Localizer["AccountStatus"]</h3>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-500 block">@Localizer["TwoFactor"]</span>
+                                        <span class="font-medium @(currentUser.TwoFactorEnabled ? "text-green-700" : "text-gray-700")">
+                                            @(currentUser.TwoFactorEnabled ? Localizer["Enabled"] : Localizer["Disabled"])
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 block">@Localizer["Lockout"]</span>
+                                        <span class="font-medium @(currentUser.LockoutEnabled ? "text-amber-700" : "text-gray-700")">
+                                            @(currentUser.LockoutEnabled ? Localizer["Enabled"] : Localizer["Disabled"])
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 block">@Localizer["FailedAttempts"]</span>
+                                        <span class="font-medium text-gray-700">@currentUser.AccessFailedCount</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 block">@Localizer["LockedUntil"]</span>
+                                        <span class="font-medium @(currentUser.LockoutEnd.HasValue && currentUser.LockoutEnd > DateTime.UtcNow ? "text-red-700" : "text-gray-700")">
+                                            @(currentUser.LockoutEnd.HasValue ? currentUser.LockoutEnd.Value.ToString("dd MMM yyyy, HH:mm") : "-")
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @* Role selection removed *@
 
                     <div class="mb-8">
                          <Checkbox Id="isActive" @bind-Value="model.IsActive" Disabled="@isSystemAdminUser" Label="@Localizer["Active"]" />
@@ -229,7 +249,7 @@
 public Guid? UserId { get; set; }
 
 private UserFormModel model = new();
-private List<RoleResponse> availableRoles = new();
+    
 private bool isLoading = true;
 private bool isSubmitting = false;
 private string errorMessage = string.Empty;
@@ -246,8 +266,6 @@ private UserResponse? currentUser;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadRoles();
-        
         if (IsEditMode)
         {
             await LoadUser(UserId!.Value);
@@ -258,18 +276,7 @@ private UserResponse? currentUser;
         }
     }
 
-    private async Task LoadRoles()
-    {
-        try
-        {
-            var result = await RoleService.GetAllRolesAsync(1, 100);
-            availableRoles = result.Items;
-        }
-        catch (Exception ex)
-        {
-            errorMessage = Localizer["FailedToLoadRoles"] + $": {ex.Message}";
-        }
-    }
+    
 
     private async Task LoadUser(Guid id)
     {
@@ -295,6 +302,8 @@ private UserResponse? currentUser;
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     IsActive = user.IsActive,
+                    EmailConfirmed = user.EmailConfirmed,
+                    PhoneNumberConfirmed = user.PhoneNumberConfirmed,
                     RoleId = user.Roles.FirstOrDefault()?.Id
                 };
                 originalEmail = user.Email;
@@ -378,17 +387,12 @@ private UserResponse? currentUser;
                     LastName = model.LastName,
                     Email = model.Email,
                     PhoneNumber = model.PhoneNumber,
-                    IsActive = model.IsActive
+                    IsActive = model.IsActive,
+                    EmailConfirmed = model.EmailConfirmed,
+                    PhoneNumberConfirmed = model.PhoneNumberConfirmed
                 };
 
                 await UserService.UpdateUserAsync(UserId!.Value, updateRequest);
-                
-                // Assign role
-                var assignRolesRequest = new AssignRolesRequest
-                {
-                    RoleId = model.RoleId
-                };
-                await UserService.AssignRolesToUserAsync(UserId!.Value, assignRolesRequest);
 
                 // Upload avatar after successful update
                 await UploadSelectedAvatarAsync(UserId!.Value);
@@ -403,8 +407,7 @@ private UserResponse? currentUser;
                     FirstName = model.FirstName,
                     LastName = model.LastName,
                     PhoneNumber = model.PhoneNumber,
-                    IsActive = model.IsActive,
-                    RoleId = model.RoleId
+                    IsActive = model.IsActive
                 };
                 
                 var created = await UserService.CreateUserAsync(createRequest);
@@ -513,6 +516,8 @@ private UserResponse? currentUser;
         public string Password { get; set; } = string.Empty;
         public string ConfirmPassword { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
+        public bool EmailConfirmed { get; set; }
+        public bool PhoneNumberConfirmed { get; set; }
         public Guid? RoleId { get; set; }
     }
 }

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(ls -la /h/SMA/EShop/Domain/Entities/*.cs)",
-      "Bash(ls -la /h/SMA/EShop/Api/*.cs)"
+      "Bash(ls -la /h/SMA/EShop/Api/*.cs)",
+      "Bash(dotnet restore)"
     ]
   }
 }

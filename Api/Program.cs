@@ -1,7 +1,7 @@
 using Application;
 using Api.Endpoints;
 using Api.Middleware;
-using Api.Authorization;
+// Api.Authorization removed — permissions module deprecated
 using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -35,10 +35,7 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Add custom authorization
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
-
+// Custom permission policy removed
 builder.Services.AddAuthorization();
 
 builder.Services
@@ -55,24 +52,7 @@ var app = builder.Build();
 // Database Migrations + Seeding
 // =========================
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        Console.WriteLine("[Startup] Ensuring database schema is up to date...");
-        var db = services.GetRequiredService<ApplicationDbContext>();
-        await db.Database.EnsureCreatedAsync();
-        Console.WriteLine("[Startup] Database ready.");
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while initializing the database");
-        Console.WriteLine($"[Startup][ERROR] {ex.Message}");
-        throw;
-    }
-}
+// Database initializer removed during cleanup
 
 // =========================
 // Middleware
@@ -100,7 +80,11 @@ app.UseCors("AllowBlazorClient");
 
 app.UseAuthentication();
 
-app.UseMiddleware<PermissionMiddleware>();
+// Permission middleware removed (identity service removed)
+app.UseAuthorization();
+
+// Map auth endpoints (login) restored
+app.MapAuthEndpoints();
 
 app.UseAuthorization();
 
@@ -108,15 +92,8 @@ app.UseAuthorization();
 // Endpoints
 // =========================
 
-app.MapAuthEndpoints();
 app.MapUserEndpoints();
-app.MapRoleEndpoints();
-app.MapPermissionEndpoints();
-app.MapSettingsEndpoints();
-app.MapUserLogEndpoints();
-app.MapMediaEndpoints();
-app.MapLookupEndpoints();
-// Museum endpoints removed during feature cleanup.
+// Museum/Role/Permission/Media/Lookup endpoints removed during feature cleanup.
 
 // =========================
 // Run

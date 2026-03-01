@@ -32,7 +32,6 @@ public class UserDto
 public class LoginRequest
 {
     [Required(ErrorMessage = "EmailRequired")]
-    [EmailAddress(ErrorMessage = "InvalidEmailFormat")]
     [MaxLength(256, ErrorMessage = "MaxLengthError")]
     public string Email { get; set; } = string.Empty;
 

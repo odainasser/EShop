@@ -96,7 +96,9 @@ public class GlobalExceptionHandler : IExceptionHandler
             default:
                 problemDetails.Status = StatusCodes.Status500InternalServerError;
                 problemDetails.Title = "Internal Server Error";
-                problemDetails.Detail = "An unexpected error occurred.";
+                var inner = exception.InnerException;
+                problemDetails.Detail = $"{exception.GetType().Name}: {exception.Message}" +
+                    (inner != null ? $" | {inner.GetType().Name}: {inner.Message}" : "");
                 break;
         }
 

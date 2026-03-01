@@ -5,8 +5,7 @@ namespace Application.Features.Auth;
 public class LoginRequest
 {
     [Required(ErrorMessage = "EmailRequired")]
-    [EmailAddress(ErrorMessage = "InvalidEmailFormat")]
-    [MaxLength(256, ErrorMessage = "MaxLengthError")] // Ensure MaxLengthError exists or use generic
+    [MaxLength(256, ErrorMessage = "MaxLengthError")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "PasswordRequired")]

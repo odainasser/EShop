@@ -1,8 +1,6 @@
 @page "/admin/clients"
 @attribute [Authorize]
-@attribute [RequirePermission(Permissions.ClientsRead)]
 @using Microsoft.AspNetCore.Authorization
-@using Web.Authorization
 @using Web.Components.Common
 @using System.Globalization
 @inject IUserManagementService UserService

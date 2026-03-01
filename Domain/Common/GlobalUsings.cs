@@ -1,0 +1,26 @@
+// Global usings for Eshop.Domain legacy files
+global using Domain.Common;
+global using Eshop.Domain.Common;
+global using Eshop.Domain.Common.Attributes;
+global using Eshop.Domain.Common.Helpers;
+global using Eshop.Domain.Enums;
+global using Eshop.Domain.Entities.Carts;
+global using Eshop.Domain.Entities.Lukups;
+global using Eshop.Domain.Entities.Museum;
+global using Eshop.Domain.Entities.OrderTicket;
+global using Eshop.Domain.Entities.POS;
+global using Eshop.Domain.Entities.Payments;
+global using Eshop.Domain.Entities.People;
+global using Eshop.Domain.Entities.Retail;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore.ChangeTracking;
+global using Microsoft.EntityFrameworkCore.Metadata.Builders;
+global using Microsoft.AspNetCore.Identity;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Mvc.Filters;
+global using System.ComponentModel;
+global using System.ComponentModel.DataAnnotations;
+global using System.ComponentModel.DataAnnotations.Schema;
+global using System.Globalization;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.Extensions.DependencyInjection;

@@ -73,20 +73,17 @@ builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddBlazoredLocalStorage();
 
 // Add custom authorization
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+    // Permission policy provider and handler removed
 
 builder.Services.AddAuthorizationCore();
 
 // Add management services
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
-builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
-builder.Services.AddScoped<IPermissionManagementService, PermissionManagementService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Register client-side services (all communicate via HTTP API)
 builder.Services.AddScoped<IUserLogService, ClientUserLogService>();
-builder.Services.AddScoped<ISystemSettingService, ClientSystemSettingService>();
+// SystemSetting client service removed
 builder.Services.AddScoped<IMediaService, ClientMediaService>();
 builder.Services.AddScoped<ILookupService, ClientLookupService>();
 // Museum client service removed

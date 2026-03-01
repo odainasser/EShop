@@ -1,10 +1,8 @@
-using Domain.Entities;
-
 namespace Domain.Repositories;
 
-public interface IUserLogRepository : IRepository<UserLog>
+public interface IUserLogRepository : IRepository<Audit>
 {
-    Task<IEnumerable<UserLog>> GetLogsByUserIdAsync(Guid userId);
-    Task<IEnumerable<UserLog>> GetLatestLogsAsync(int count);
-    Task<(IEnumerable<UserLog> Items, int TotalCount)> GetPagedLogsAsync(int pageNumber, int pageSize, Guid? userId = null, string? entityName = null, string? entityId = null);
+    Task<IEnumerable<Audit>> GetLogsByUserIdAsync(string userId);
+    Task<IEnumerable<Audit>> GetLatestLogsAsync(int count);
+    Task<(IEnumerable<Audit> Items, int TotalCount)> GetPagedLogsAsync(int pageNumber, int pageSize, string? userId = null, string? entityName = null, string? entityId = null);
 }

@@ -1,4 +1,19 @@
-﻿namespace Eshop.Domain.Enums;
+﻿using System.ComponentModel;
+using System.Reflection;
+
+namespace Eshop.Domain.Enums;
+
+public static class EnumExtensions
+{
+    public static int ToInt(this Enum value) => Convert.ToInt32(value);
+
+    public static string GetDescription(this Enum value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        var attr = field?.GetCustomAttribute<DescriptionAttribute>();
+        return attr?.Description ?? value.ToString();
+    }
+}
 
 public static class EnumCartStatus
 {

@@ -1,12 +1,10 @@
 @page "/admin/users"
 @attribute [Authorize]
-@attribute [RequirePermission(Permissions.UsersRead)]
 @using Microsoft.AspNetCore.Authorization
-@using Web.Authorization
 @using Web.Components.Common
 @using System.Globalization
 @inject IUserManagementService UserService
-@inject IRoleManagementService RoleService
+@* Role management removed *@
 @inject NavigationManager Navigation
 @inject IJsonStringLocalizer Localizer
 
@@ -24,7 +22,7 @@
                     <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageUserAccountsRolesPermissions"]</p>
                 </div>
                 <div class="flex gap-3 w-full sm:w-auto">
-                    <AuthorizeView Policy="Permission:users.write">
+                    <AuthorizeView>
                         <Authorized>
                             <button @onclick="NavigateToCreate" 
                                     class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
@@ -57,18 +55,7 @@
                                class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary/50 focus:border-bf-primary transition-all duration-200" 
                                placeholder="@Localizer["Search"]..." />
                     </div>
-                    <div class="relative min-w-[150px]">
-                        <select @onchange="OnRoleFilterChanged" class="appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pe-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-bf-primary">
-                            <option value="">@Localizer["AllRoles"]</option>
-                            @foreach (var role in availableRoles)
-                            {
-                                <option value="@role.NameEn">@(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.NameEn)</option>
-                            }
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-700">
-                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                        </div>
-                    </div>
+                    @* Role filter removed *@
                     <button @onclick="SearchUsers" 
                             class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
                         <i class="bi bi-search"></i>
@@ -173,22 +160,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
                                         <div class="flex items-center justify-end gap-1">
-                                            <AuthorizeView Policy="Permission:system.audit">
-                                                <Authorized>
-                                                    <button @onclick="() => ViewLogs(user.Id)" 
-                                                            class="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200" 
-                                                            title="@Localizer["ViewLogs"]">
-                                                        <i class="bi bi-journal-text"></i>
-                                                    </button>
-                                                    <button @onclick="() => ViewUserActivities(user.Id)" 
-                                                            class="p-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 rounded-lg transition-all duration-200" 
-                                                            title="@Localizer["ViewUserActivities"]">
-                                                        <i class="bi bi-activity"></i>
-                                                    </button>
-                                                </Authorized>
-                                            </AuthorizeView>
-
-                                            <AuthorizeView Policy="Permission:users.write">
+                                            <AuthorizeView>
                                                 <Authorized>
                                                     @if (!user.IsSystemUser)
                                                     {
@@ -224,7 +196,7 @@
                                                     }
                                                 </NotAuthorized>
                                             </AuthorizeView>
-                                            <AuthorizeView Policy="Permission:users.delete">
+                                            <AuthorizeView>
                                                 <Authorized>
                                                     @if (!user.IsSystemUser)
                                                     {
@@ -275,7 +247,7 @@
 
 @code {
     private List<UserResponse> users = new();
-    private List<RoleResponse> availableRoles = new();
+    
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private bool showDeleteConfirm = false;
@@ -298,23 +270,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadRoles();
         await LoadUsers();
-    }
-
-    private async Task LoadRoles()
-    {
-        try
-        {
-            // Fetch all roles for the filter dropdown, exclude Client role
-            var result = await RoleService.GetAllRolesAsync(1, 100);
-            availableRoles = result.Items.Where(r => r.NameEn != "Client").ToList();
-        }
-        catch (Exception ex)
-        {
-            // Log error but don't stop user loading
-            Console.WriteLine($"Failed to load roles: {ex.Message}");
-        }
     }
 
     private async Task LoadUsers()
@@ -325,7 +281,7 @@
         try
         {
             // Exclude users with Client role from the admin users list
-            var result = await UserService.GetAllUsersAsync(pageIndex, pageSize, selectedRole, excludeRole: "Client");
+            var result = await UserService.GetAllUsersAsync(pageIndex, pageSize, null, excludeRole: "Client");
             users = result.Items;
             totalPages = result.TotalPages;
             totalCount = result.TotalCount;
@@ -346,16 +302,7 @@
         await LoadUsers();
     }
 
-    private async Task OnRoleFilterChanged(ChangeEventArgs e)
-    {
-        selectedRole = e.Value?.ToString();
-        if (string.IsNullOrWhiteSpace(selectedRole))
-        {
-            selectedRole = null;
-        }
-        pageIndex = 1; // Reset to first page when filter changes
-        await LoadUsers();
-    }
+    private Task OnRoleFilterChanged(ChangeEventArgs e) => Task.CompletedTask;
 
     private void SearchUsers()
     {
@@ -408,15 +355,4 @@
         }
     }
 
-    private void ViewLogs(Guid userId)
-    {
-        var uri = $"/admin/logs?entityName=User&entityId={userId}";
-        Navigation.NavigateTo(uri, forceLoad: false);
-    }
-
-    private void ViewUserActivities(Guid userId)
-    {
-        var uri = $"/admin/logs?userId={userId}";
-        Navigation.NavigateTo(uri, forceLoad: false);
-    }
 }

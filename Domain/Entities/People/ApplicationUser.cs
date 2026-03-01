@@ -62,6 +62,10 @@ public class ApplicationUser : IdentityUser, IBaseEntity
     public DateTime? EditAt { get; set; }
     public int? DeletedBy { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? UpdatedBy { get; set; }
 
     #region Not Mapped
 
