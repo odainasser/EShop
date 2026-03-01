@@ -60,28 +60,16 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        Console.WriteLine("[Startup] Beginning database migration and seeding...");
-
-        // Apply any pending migrations to ensure database schema is up to date
+        Console.WriteLine("[Startup] Ensuring database schema is up to date...");
         var db = services.GetRequiredService<ApplicationDbContext>();
-        
-        Console.WriteLine("[Startup] Applying migrations...");
-        await db.Database.MigrateAsync();
-        Console.WriteLine("[Startup] Migrations applied successfully.");
-
-        // ALWAYS run seeders - they handle idempotency internally
-        Console.WriteLine("[Startup] Starting DatabaseSeeder...");
-        var logger = services.GetRequiredService<ILogger<DatabaseSeeder>>();
-        var seeder = new DatabaseSeeder(services, logger);
-        await seeder.SeedAsync();
-        Console.WriteLine("[Startup] DatabaseSeeder completed successfully.");
+        await db.Database.EnsureCreatedAsync();
+        Console.WriteLine("[Startup] Database ready.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating or seeding the database");
+        logger.LogError(ex, "An error occurred while initializing the database");
         Console.WriteLine($"[Startup][ERROR] {ex.Message}");
-        Console.WriteLine($"[Startup][ERROR] Stack: {ex.StackTrace}");
         throw;
     }
 }
