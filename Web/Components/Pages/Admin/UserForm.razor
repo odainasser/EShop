@@ -1,0 +1,518 @@
+@page "/admin/users/create"
+@page "/admin/users/edit/{UserId:guid}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@inject IUserManagementService UserService
+@inject IRoleManagementService RoleService
+@inject IMediaService MediaService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@(IsEditMode ? Localizer["EditUser"] : Localizer["CreateUser"])</PageTitle>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
+            <div class="mb-8">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <i class="bi bi-person-plus text-purple-600"></i>
+                    @(IsEditMode ? Localizer["EditUser"] : Localizer["CreateUser"])
+                </h1>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="@model" OnValidSubmit="@HandleSubmit" FormName="userForm">
+                    <LocalizedDataAnnotationsValidator />
+                    <ServerValidator @ref="serverValidator" />
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                            <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                            <span class="text-red-800">@errorMessage</span>
+                        </div>
+                    }
+
+                    @if (isSystemAdminUser)
+                    {
+                        <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-3">
+                            <i class="bi bi-lock-fill text-yellow-600 text-lg mt-0.5"></i>
+                            <span class="text-yellow-800">@Localizer["SystemAdminModifyWarning"]</span>
+                        </div>
+                    }
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["ProfilePicture"]</label>
+                        <div class="flex items-center gap-4">
+                            @if (!string.IsNullOrEmpty(avatarUrl))
+                            {
+                                <img src="@avatarUrl" alt="Profile Picture" class="h-20 w-20 rounded-full object-cover border border-gray-200" />
+                            }
+                            else
+                            {
+                                <div class="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                    <i class="bi bi-person text-3xl text-gray-400"></i>
+                                </div>
+                            }
+
+                            <div>
+                                <InputFile OnChange="HandleFileSelected" class="block w-full text-sm text-gray-500" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["FirstName"]</label>
+                            <InputText @bind-Value="model.FirstName" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                                       id="firstName" 
+                                       placeholder="John" 
+                                       disabled="@isSystemAdminUser" />
+                            <ValidationMessage For="@(() => model.FirstName)" class="text-red-600 text-sm mt-1" />
+                        </div>
+
+                        <div>
+                            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["LastName"]</label>
+                            <InputText @bind-Value="model.LastName" 
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                                       id="lastName" 
+                                       placeholder="Doe" 
+                                       disabled="@isSystemAdminUser" />
+                            <ValidationMessage For="@(() => model.LastName)" class="text-red-600 text-sm mt-1" />
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["Email"]</label>
+    <InputText @bind-Value="model.Email" 
+               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+               id="email" 
+               placeholder="john.doe@example.com" 
+               disabled="@isSystemAdminUser" />
+    <ValidationMessage For="@(() => model.Email)" class="text-red-600 text-sm mt-1" />
+</div>
+                    
+                    @if (!IsEditMode)
+                    {
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["Password"]</label>
+                                <div class="relative">
+                                    <InputText @bind-Value="model.Password" 
+                                               type="@(showPassword ? "text" : "password")"
+                                               class="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                                               id="password" />
+                                    <button type="button" 
+                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                            @onclick="TogglePasswordVisibility"
+                                            tabindex="-1">
+                                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                                    </button>
+                                </div>
+                                <ValidationMessage For="@(() => model.Password)" class="text-red-600 text-sm mt-1" />
+                            </div>
+
+                            <div>
+                                <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["ConfirmPassword"]</label>
+                                <div class="relative">
+                                    <InputText @bind-Value="model.ConfirmPassword" 
+                                               type="@(showConfirmPassword ? "text" : "password")"
+                                               class="w-full pl-4 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                                               id="confirmPassword" />
+                                    <button type="button" 
+                                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                            @onclick="ToggleConfirmPasswordVisibility"
+                                            tabindex="-1">
+                                        <i class="bi @(showConfirmPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                                    </button>
+                                </div>
+                                @if (passwordMismatch)
+                                {
+                                    <div class="text-red-600 text-sm mt-1">@Localizer["PasswordsDoNotMatch"]</div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-6">
+                        <label for="phoneNumber" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["PhoneNumber"]</label>
+                        <InputText @bind-Value="model.PhoneNumber" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                                   id="phoneNumber" />
+                        <ValidationMessage For="@(() => model.PhoneNumber)" class="text-red-600 text-sm mt-1" />
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">@Localizer["Role"]</label>
+                        <select @bind="model.RoleId" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                disabled="@isSystemAdminUser">
+                            <option value="">@Localizer["SelectRole"]</option>
+                            @foreach (var role in availableRoles)
+                            {
+                                // Never allow assigning Client role from admin panel - clients are created via registration only
+                                var isClientRole = string.Equals(role.NameEn, "Client", StringComparison.OrdinalIgnoreCase);
+                                if (isClientRole)
+                                {
+                                    continue;
+                                }
+                                <option value="@role.Id">@(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.NameEn)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-8">
+                         <Checkbox Id="isActive" @bind-Value="model.IsActive" Disabled="@isSystemAdminUser" Label="@Localizer["Active"]" />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
+                        @if (IsEditMode && currentUser != null)
+                        {
+                            <div class="text-sm text-gray-500 me-auto">
+                                <div class="flex flex-col gap-1">
+                                    <div>
+                                        <i class="bi bi-clock-history me-1"></i>
+                                        @Localizer["CreatedAt"]: @currentUser.CreatedAt.ToString("dd MMM yyyy, HH:mm")
+                                    </div>
+                                    @if (currentUser.UpdatedAt.HasValue)
+                                    {
+                                        <div>
+                                            <i class="bi bi-pencil-square me-1"></i>
+                                            @Localizer["UpdatedAt"]: @currentUser.UpdatedAt.Value.ToString("dd MMM yyyy, HH:mm")
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        <button type="button" @onclick="Cancel" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200">
+                            @(isSystemAdminUser ? Localizer["Close"] : Localizer["Cancel"])
+                        </button>
+                        @if (!isSystemAdminUser)
+                        {
+                            <button type="submit" disabled="@isSubmitting" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                 @if (isSubmitting)
+                                 {
+                                     <svg class="animate-spin -ms-1 me-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                     </svg>
+                                     <span>@Localizer["Processing"]</span>
+                                 }
+                                 else
+                                 {
+                                     <span>@Localizer["Save"]</span>
+                                 }
+                            </button>
+                        }
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+[Parameter]
+public Guid? UserId { get; set; }
+
+private UserFormModel model = new();
+private List<RoleResponse> availableRoles = new();
+private bool isLoading = true;
+private bool isSubmitting = false;
+private string errorMessage = string.Empty;
+private bool IsEditMode => UserId.HasValue;
+private string? avatarUrl;
+private IBrowserFile? selectedAvatarFile;
+private bool isSystemAdminUser = false;
+private bool passwordMismatch = false;
+private bool showPassword = false;
+private bool showConfirmPassword = false;
+private string? originalEmail;
+private ServerValidator serverValidator = null!;
+private UserResponse? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        
+        if (IsEditMode)
+        {
+            await LoadUser(UserId!.Value);
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            var result = await RoleService.GetAllRolesAsync(1, 100);
+            availableRoles = result.Items;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadRoles"] + $": {ex.Message}";
+        }
+    }
+
+    private async Task LoadUser(Guid id)
+    {
+        isLoading = true;
+        try
+        {
+            var user = await UserService.GetUserByIdAsync(id);
+            if (user != null)
+            {
+                // Check if user has Client role - redirect to ClientForm
+                var isClient = user.Roles.Any(r => string.Equals(r.Name, "Client", StringComparison.OrdinalIgnoreCase));
+                if (isClient)
+                {
+                    Navigation.NavigateTo($"/admin/clients/edit/{id}");
+                    return;
+                }
+
+                currentUser = user;
+                model = new UserFormModel
+                {
+                    FirstName = user.FirstName ?? string.Empty,
+                    LastName = user.LastName ?? string.Empty,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    IsActive = user.IsActive,
+                    RoleId = user.Roles.FirstOrDefault()?.Id
+                };
+                originalEmail = user.Email;
+                
+                // Get avatar
+                var media = await MediaService.GetMediaForEntityAsync(id, "User", "avatar");
+                var avatar = media.FirstOrDefault();
+                if (avatar != null)
+                {
+                    avatarUrl = MediaService.GetMediaUrl(avatar);
+                }
+
+                // Check system admin status
+                isSystemAdminUser = user.IsSystemUser;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadUser"] + $": {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+
+        // Password validation
+        if (!IsEditMode)
+        {
+            if (string.IsNullOrWhiteSpace(model.Password))
+            {
+                 serverValidator.DisplayErrors(new Dictionary<string, string[]>
+                 {
+                     { nameof(model.Password), new[] { "PasswordRequired" } }
+                 });
+                 return;
+            }
+            if (model.Password != model.ConfirmPassword)
+            {
+                passwordMismatch = true;
+                return;
+            }
+        }
+        passwordMismatch = false;
+
+        isSubmitting = true;
+
+        try
+        {
+            // Check if email exists
+            if (!IsEditMode || (IsEditMode && !string.Equals(originalEmail, model.Email, StringComparison.OrdinalIgnoreCase)))
+            {
+                var exists = await UserService.CheckEmailExistsAsync(model.Email);
+                if (exists)
+                {
+                    string msg = Localizer["UserAlreadyExists"];
+                    if (string.IsNullOrEmpty(msg) || msg == "UserAlreadyExists")
+                    {
+                        msg = $"User with email '{model.Email}' already exists.";
+                    }
+                    
+                    serverValidator.DisplayErrors(new Dictionary<string, string[]> 
+                    {
+                        { nameof(model.Email), new[] { msg } }
+                    });
+
+                    isSubmitting = false;
+                    return;
+                }
+            }
+
+            if (IsEditMode)
+            {
+                var updateRequest = new UpdateUserRequest
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    PhoneNumber = model.PhoneNumber,
+                    IsActive = model.IsActive
+                };
+
+                await UserService.UpdateUserAsync(UserId!.Value, updateRequest);
+                
+                // Assign role
+                var assignRolesRequest = new AssignRolesRequest
+                {
+                    RoleId = model.RoleId
+                };
+                await UserService.AssignRolesToUserAsync(UserId!.Value, assignRolesRequest);
+
+                // Upload avatar after successful update
+                await UploadSelectedAvatarAsync(UserId!.Value);
+            }
+            else
+            {
+                var createRequest = new CreateUserRequest
+                {
+                    Email = model.Email,
+                    Password = model.Password,
+                    ConfirmPassword = model.ConfirmPassword,
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    PhoneNumber = model.PhoneNumber,
+                    IsActive = model.IsActive,
+                    RoleId = model.RoleId
+                };
+                
+                var created = await UserService.CreateUserAsync(createRequest);
+
+                // Upload avatar after create using created user's id
+                if (created != null)
+                {
+                    await UploadSelectedAvatarAsync(created.Id);
+                }
+            }
+
+            Navigation.NavigateTo("/admin/users");
+        }
+        catch (ServerValidationException ex)
+        {
+            serverValidator.DisplayErrors(ex.Errors);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task UploadSelectedAvatarAsync(Guid userId)
+    {
+        if (selectedAvatarFile == null) return;
+
+        long maxFileSize = 5 * 1024 * 1024;
+        using var uploadStream = selectedAvatarFile.OpenReadStream(maxFileSize);
+
+        var existingMedia = await MediaService.GetMediaForEntityAsync(userId, "User", "avatar");
+        foreach (var media in existingMedia)
+        {
+            await MediaService.DeleteMediaAsync(media.Id);
+        }
+
+        var uploaded = await MediaService.UploadMediaAsync(userId, "User", uploadStream, selectedAvatarFile.Name, selectedAvatarFile.ContentType, "avatar");
+        avatarUrl = MediaService.GetMediaUrl(uploaded);
+        selectedAvatarFile = null;
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        if (isSystemAdminUser) return;
+
+        var file = e.File;
+        if (file == null) return;
+
+        try
+        {
+            long maxFileSize = 5 * 1024 * 1024;
+            // create preview
+            try
+            {
+                var buffer = new byte[file.Size > int.MaxValue ? int.MaxValue : (int)file.Size];
+                using var stream = file.OpenReadStream(maxFileSize);
+                await stream.ReadAsync(buffer.AsMemory(0, buffer.Length));
+                var base64 = Convert.ToBase64String(buffer);
+                avatarUrl = $"data:{file.ContentType};base64,{base64}";
+            }
+            catch
+            {
+                // ignore preview errors
+            }
+
+            selectedAvatarFile = file;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToProcessImage"] + $": {ex.Message}";
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/admin/users");
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+    }
+
+    private class UserFormModel
+    {
+        [Required(ErrorMessage = "FirstNameRequired")]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "LastNameRequired")]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "EmailRequired")]
+        [EmailAddress(ErrorMessage = "InvalidEmailFormat")]
+        public string Email { get; set; } = string.Empty;
+
+        public string? PhoneNumber { get; set; }
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public Guid? RoleId { get; set; }
+    }
+}

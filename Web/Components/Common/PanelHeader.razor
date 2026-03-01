@@ -1,0 +1,75 @@
+@inject IJsonStringLocalizer Localizer
+
+<!-- Header - Shared between Admin and Client layouts -->
+<nav class="fixed top-0 left-0 right-0 z-50 shadow-sm border-b border-gray-700 h-16" style="background-color: #231f20;">
+    <div class="px-4 lg:px-6 h-full">
+        <div class="flex justify-between items-center h-full">
+            <!-- Left: Mobile menu button + Logo -->
+            <div class="flex items-center gap-3">
+                <!-- Mobile menu toggle button -->
+                <button @onclick="OnMenuToggle" 
+                        class="lg:hidden p-2 rounded-lg text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-bf-primary">
+                    <i class="bi @(IsSidebarOpen ? "bi-x-lg" : "bi-list") text-xl"></i>
+                </button>
+                
+                <Logo Href="@HomeUrl" Size="Logo.LogoSize.Full" />
+            </div>
+
+            <!-- Right: Language + User Menu -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <LanguageSelector Alignment="right" ToggleCss="bf-dropdown-toggle bf-dropdown-compact" />
+                
+                <AccountDropdown DisplayName="@DisplayName"
+                                 AvatarUrl="@AvatarUrl"
+                                 UserEmail="@UserEmail"
+                                 DefaultInitial="@DefaultInitial">
+                    <MenuItems>
+                        @MenuItems
+                    </MenuItems>
+                </AccountDropdown>
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    /// <summary>
+    /// The URL for the home/logo link
+    /// </summary>
+    [Parameter] public string HomeUrl { get; set; } = "/";
+
+    /// <summary>
+    /// Whether the sidebar is currently open (for mobile)
+    /// </summary>
+    [Parameter] public bool IsSidebarOpen { get; set; }
+
+    /// <summary>
+    /// Callback when the menu toggle button is clicked
+    /// </summary>
+    [Parameter] public EventCallback OnMenuToggle { get; set; }
+
+    /// <summary>
+    /// The user's display name
+    /// </summary>
+    [Parameter] public string DisplayName { get; set; } = "";
+
+    /// <summary>
+    /// The user's avatar URL (optional)
+    /// </summary>
+    [Parameter] public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// The user's email address
+    /// </summary>
+    [Parameter] public string? UserEmail { get; set; }
+
+    /// <summary>
+    /// Default initial letter when no avatar or display name
+    /// </summary>
+    [Parameter] public string DefaultInitial { get; set; } = "U";
+
+    /// <summary>
+    /// Custom menu items to render in the dropdown
+    /// </summary>
+    [Parameter] public RenderFragment? MenuItems { get; set; }
+}

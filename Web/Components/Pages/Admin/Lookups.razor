@@ -1,0 +1,365 @@
+@page "/admin/lookups"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.LookupsRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Constants
+@using System.Globalization
+@inject ILookupService LookupService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["LookupsManagement"] - BitFlow</PageTitle>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-list-ul text-bf-primary"></i>
+                        @Localizer["LookupsManagement"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageSystemLookups"]</p>
+                </div>
+                <AuthorizeView Policy="Permission:lookups.write">
+                    <Authorized>
+                        <button @onclick="NavigateToCreate" 
+                                class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["AddLookup"]</span>
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <button disabled 
+                                class="inline-flex items-center gap-2 py-3 px-6 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>@Localizer["AddLookup"]</span>
+                        </button>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="mb-6">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                            <i class="bi bi-search text-gray-400"></i>
+                        </div>
+                        <input type="text" 
+                               @bind="searchTerm" 
+                               @bind:event="oninput"
+                               @onkeypress="HandleSearchKeyPress"
+                               class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary/50 focus:border-bf-primary transition-all duration-200" 
+                               placeholder="@Localizer["Search"]..." />
+                    </div>
+                    <div class="relative min-w-[150px]">
+                        <select @onchange="OnTypeFilterChanged" class="appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pe-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-bf-primary">
+                            <option value="">@Localizer["AllTypes"]</option>
+                            @foreach (var type in availableTypes)
+                            {
+                                <option value="@type">@(Localizer[type] ?? type)</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-700">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                    <button @onclick="SearchLookups" 
+                            class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
+                        <i class="bi bi-search"></i>
+                        <span class="hidden sm:inline">@Localizer["Search"]</span>
+                    </button>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-bf-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                    <span class="text-red-800">@errorMessage</span>
+                </div>
+            }
+            else if (lookups == null || !lookups.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoLookupsFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Code"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Name"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Type"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Parent"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                                <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var lookup in filteredLookups)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        @lookup.Code
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        @GetLocalizedName(lookup)
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-bf-primary/10 text-bf-primary">
+                                            @(Localizer[lookup.Type] ?? lookup.Type)
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        @(IsArabic ? lookup.ParentNameAr : lookup.ParentName)
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if (lookup.IsActive)
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <AuthorizeView Policy="Permission:system.audit">
+                                                <Authorized>
+                                                    <button @onclick="() => ViewLogs(lookup.Id)" 
+                                                            class="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200" 
+                                                            title="@Localizer["ViewLogs"]">
+                                                        <i class="bi bi-journal-text"></i>
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
+                                            <AuthorizeView Policy="Permission:lookups.write">
+                                                <Authorized>
+                                                    <button @onclick="() => NavigateToEdit(lookup.Id)" 
+                                                            class="p-2 text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition-all duration-200"
+                                                            title="@Localizer["Edit"]">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                </Authorized>
+                                                <NotAuthorized>
+                                                    <button disabled class="p-2 text-gray-300 cursor-not-allowed">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                </NotAuthorized>
+                                            </AuthorizeView>
+                                            <AuthorizeView Policy="Permission:lookups.delete">
+                                                <Authorized>
+                                                    <button @onclick="() => ConfirmDelete(lookup.Id)" 
+                                                            class="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all duration-200"
+                                                            title="@Localizer["Delete"]">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </Authorized>
+                                                <NotAuthorized>
+                                                    <button disabled class="p-2 text-gray-300 cursor-not-allowed">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </NotAuthorized>
+                                            </AuthorizeView>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Pagination PageIndex="@pageIndex" 
+                                TotalPages="@totalPages" 
+                                TotalCount="@totalCount" 
+                                PageSize="@pageSize" 
+                                OnPageChanged="@OnPageChanged" />
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<AuthorizeView Policy="Permission:lookups.delete">
+    <Authorized>
+        @if (showDeleteConfirm)
+        {
+            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">@Localizer["ConfirmDeleteTitle"]</h3>
+                    <p class="text-gray-600 mb-6">@Localizer["ConfirmDeleteMessage"]</p>
+                    <div class="flex gap-3">
+                        <button @onclick="CancelDelete" 
+                                class="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium">
+                            @Localizer["Cancel"]
+                        </button>
+                        <button @onclick="DeleteLookup" 
+                                class="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium">
+                            @Localizer["Delete"]
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private List<LookupDto> lookups = new();
+    private List<string> availableTypes = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private bool showDeleteConfirm = false;
+    private Guid lookupToDelete;
+    private string searchTerm = string.Empty;
+    private string? selectedType = null;
+    
+    // Pagination
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private bool IsArabic => CultureInfo.CurrentUICulture.Name.StartsWith("ar", StringComparison.OrdinalIgnoreCase);
+
+    private IEnumerable<LookupDto> filteredLookups => string.IsNullOrWhiteSpace(searchTerm) 
+        ? lookups 
+        : lookups.Where(l => 
+            (l.Code?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.NameEn?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.NameAr?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (l.Type?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadAvailableTypes();
+        await LoadLookups();
+    }
+
+    private string GetLocalizedName(LookupDto lookup)
+    {
+        return IsArabic ? lookup.NameAr : lookup.NameEn;
+    }
+
+    private void LoadAvailableTypes()
+    {
+        // Get all lookup types except Unknown
+        availableTypes = Enum.GetNames<LookupType>()
+            .Where(t => t != nameof(LookupType.Unknown))
+            .ToList();
+    }
+
+    private async Task LoadLookups()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        
+        try
+        {
+            var result = await LookupService.GetAllLookupsAsync(pageIndex, pageSize, selectedType);
+            lookups = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load lookups: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task OnPageChanged(int newPageIndex)
+    {
+        pageIndex = newPageIndex;
+        await LoadLookups();
+    }
+
+    private async Task OnTypeFilterChanged(ChangeEventArgs e)
+    {
+        selectedType = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(selectedType))
+        {
+            selectedType = null;
+        }
+        pageIndex = 1; // Reset to first page when filter changes
+        await LoadLookups();
+    }
+
+    private void SearchLookups()
+    {
+        // Trigger re-render with filtered results
+        StateHasChanged();
+    }
+
+    private void HandleSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            SearchLookups();
+        }
+    }
+
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/admin/lookups/create");
+    }
+
+    private void NavigateToEdit(Guid id)
+    {
+        Navigation.NavigateTo($"/admin/lookups/edit/{id}");
+    }
+
+    private void ViewLogs(Guid id)
+    {
+        var uri = $"/admin/logs?entityName=Lookup&entityId={id}";
+        Navigation.NavigateTo(uri, forceLoad: false);
+    }
+
+    private void ConfirmDelete(Guid id)
+    {
+        lookupToDelete = id;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        lookupToDelete = Guid.Empty;
+    }
+
+    private async Task DeleteLookup()
+    {
+        try
+        {
+            await LookupService.DeleteLookupAsync(lookupToDelete);
+            showDeleteConfirm = false;
+            await LoadLookups();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to delete lookup: {ex.Message}";
+            showDeleteConfirm = false;
+        }
+    }
+}

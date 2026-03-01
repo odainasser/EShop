@@ -1,0 +1,65 @@
+@inject IJsonStringLocalizer Localizer
+
+@* Reusable confirmation modal *@
+@if (IsVisible)
+{
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">@Title</h3>
+            <p class="text-gray-600 mb-6">@Message</p>
+            <div class="flex gap-3">
+                <button @onclick="HandleCancel" 
+                        class="flex-1 py-2 px-4 @CancelButtonClass">
+                    @CancelText
+                </button>
+                <button @onclick="HandleConfirm" 
+                        class="flex-1 py-2 px-4 @GetConfirmButtonClass()">
+                    @ConfirmText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Message { get; set; } = string.Empty;
+    [Parameter] public string ConfirmText { get; set; } = string.Empty;
+    [Parameter] public string CancelText { get; set; } = string.Empty;
+    [Parameter] public string? ConfirmButtonClass { get; set; }
+    [Parameter] public string CancelButtonClass { get; set; } = "bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public bool IsDanger { get; set; } = false;
+
+    private string GetConfirmButtonClass()
+    {
+        if (!string.IsNullOrEmpty(ConfirmButtonClass))
+        {
+            return ConfirmButtonClass;
+        }
+
+        return IsDanger 
+            ? "bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 font-medium"
+            : "bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium";
+    }
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrEmpty(Title)) Title = Localizer["Confirm"];
+        if (string.IsNullOrEmpty(Message)) Message = Localizer["ConfirmDelete"];
+        if (string.IsNullOrEmpty(ConfirmText)) ConfirmText = Localizer["Confirm"];
+        if (string.IsNullOrEmpty(CancelText)) CancelText = Localizer["Cancel"];
+    }
+
+    private async Task HandleConfirm()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

@@ -1,0 +1,54 @@
+@using System.Globalization
+@using Web.Components.Common
+@inject IJSRuntime JSRuntime
+
+@{
+    var currentCulture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.ToLowerInvariant();
+}
+
+<Dropdown Alignment="@Alignment" ToggleCss="@ToggleCss" ToggleStyle="@ToggleStyle" MenuClass="@MenuClass">
+    <ToggleContent>
+        @if (currentCulture == "ar")
+        {
+            <span class="text-sm">&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577;</span>
+        }
+        else
+        {
+            <span class="text-sm">English</span>
+        }
+        <i class="bi bi-chevron-down text-sm ms-2"></i>
+    </ToggleContent>
+    <ChildContent>
+        <button type="button" class="w-full text-start px-4 py-2 flex items-center justify-between hover:bg-gray-100" @onclick="@(async () => await SetCulture("en"))" style="color:inherit;">
+            <span>English</span>
+            @if (currentCulture == "en") { <i class="bi bi-check2" style="color:var(--bf-primary);"></i> }
+        </button>
+        <button type="button" class="w-full text-start px-4 py-2 flex items-center justify-between hover:bg-gray-100" @onclick="@(async () => await SetCulture("ar"))" style="color:inherit;">
+            <span>&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577;</span>
+            @if (currentCulture == "ar") { <i class="bi bi-check2" style="color:var(--bf-primary);"></i> }
+        </button>
+    </ChildContent>
+</Dropdown>
+
+@code {
+    [Parameter]
+    public string Alignment { get; set; } = "right";
+
+    [Parameter]
+    public string ToggleCss { get; set; } = "bf-dropdown-toggle bf-dropdown-compact";
+
+    [Parameter]
+    public string ToggleStyle { get; set; } = "background: transparent; color: #ffffff; border-color: rgba(255,255,255,0.15);";
+
+    [Parameter]
+    public string MenuClass { get; set; } = "bf-dropdown-white";
+
+    private async Task SetCulture(string culture)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("setCultureCookie", culture);
+        }
+        catch { }
+    }
+}

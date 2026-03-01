@@ -1,0 +1,185 @@
+@inject IJsonStringLocalizer Localizer
+
+<!-- Activity List Component - Shared between Admin Logs and Client Activity -->
+
+@if (IsLoading)
+{
+    <div class="flex justify-center items-center py-12">
+        <svg class="animate-spin h-10 w-10 text-bf-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+}
+else if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+        <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+        <span class="text-red-800">@ErrorMessage</span>
+    </div>
+}
+else if (Logs == null || !Logs.Any())
+{
+    <div class="text-center py-12">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="bi bi-journal text-3xl text-gray-400"></i>
+        </div>
+        <h3 class="font-medium text-gray-900 mb-1">@Localizer[EmptyTitle]</h3>
+        <p class="text-sm text-gray-500">@Localizer[EmptyMessage]</p>
+    </div>
+}
+else
+{
+    <div class="space-y-3">
+        @foreach (var log in Logs)
+        {
+            <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="w-10 h-10 rounded-full @GetActionIconClass(log.Action) flex items-center justify-center flex-shrink-0">
+                    <i class="bi @GetActionIcon(log.Action)"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="@GetActionBadgeClass(log.Action)">
+                                @Localizer[$"Action_{log.Action}"]
+                            </span>
+                            @if (ShowUserInfo && !string.IsNullOrEmpty(log.UserName))
+                            {
+                                <span class="text-sm text-gray-600">
+                                    @Localizer["By"]&nbsp;
+                                    @if (log.UserId != Guid.Empty && !string.IsNullOrEmpty(UserEditUrlTemplate))
+                                    {
+                                        <a href="@string.Format(UserEditUrlTemplate, log.UserId)" class="text-bf-primary hover:underline font-medium">
+                                            @log.UserName
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="font-medium">@log.UserName</span>
+                                    }
+                                </span>
+                            }
+                        </div>
+                        <span class="text-xs text-gray-500">
+                            @log.Timestamp.ToLocalTime().ToString("dd MMM yyyy, HH:mm")
+                        </span>
+                    </div>
+                    @if (!string.IsNullOrEmpty(log.EntityName))
+                    {
+                        var url = GetEntityUrl(log.EntityName, log.EntityId);
+                        var localizedEntityName = Localizer[$"Entity_{log.EntityName}"];
+                        <p class="text-sm text-gray-700 mt-1">
+                            @if (!string.IsNullOrEmpty(url))
+                            {
+                                <a href="@url" class="text-bf-primary hover:underline font-medium">@localizedEntityName</a>
+                            }
+                            else
+                            {
+                                @localizedEntityName
+                            }
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Pagination -->
+    @if (TotalPages > 1)
+    {
+        <div class="flex justify-center items-center gap-2 mt-8 pt-6 border-t border-gray-200">
+            <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex - 1)" 
+                    disabled="@(PageIndex <= 1)"
+                    class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            
+            <span class="text-sm text-gray-600 px-4">
+                @Localizer["Page"] @PageIndex @Localizer["Of"] @TotalPages
+            </span>
+            
+            <button @onclick="() => OnPageChanged.InvokeAsync(PageIndex + 1)" 
+                    disabled="@(PageIndex >= TotalPages)"
+                    class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public List<UserLogDto> Logs { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public int PageIndex { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    
+    [Parameter] public bool ShowUserInfo { get; set; } = false;
+    [Parameter] public string? UserEditUrlTemplate { get; set; }
+    [Parameter] public string EmptyTitle { get; set; } = "NoActivityYet";
+    [Parameter] public string EmptyMessage { get; set; } = "NoActivityDescription";
+    
+    [Parameter] public Func<string?, string?, string?>? EntityUrlResolver { get; set; }
+
+    private string? GetEntityUrl(string? entityName, string? entityId)
+    {
+        if (EntityUrlResolver != null)
+        {
+            return EntityUrlResolver(entityName, entityId);
+        }
+        return null;
+    }
+
+    private string GetActionIcon(string action)
+    {
+        return action?.ToLowerInvariant() switch
+        {
+            "created" => "bi-plus-circle-fill",
+            "updated" => "bi-pencil-fill",
+            "deleted" => "bi-trash-fill",
+            "loggedin" => "bi-box-arrow-in-right",
+            "loggedout" => "bi-box-arrow-right",
+            "passwordchanged" => "bi-key-fill",
+            "passwordreset" => "bi-arrow-clockwise",
+            "emailverified" => "bi-envelope-check-fill",
+            "twofactorenabled" => "bi-shield-check",
+            "twofactordisabled" => "bi-shield-x",
+            _ => "bi-circle-fill"
+        };
+    }
+
+    private string GetActionIconClass(string action)
+    {
+        return action?.ToLowerInvariant() switch
+        {
+            "created" => "bg-green-100 text-green-600",
+            "updated" => "bg-yellow-100 text-yellow-600",
+            "deleted" => "bg-red-100 text-red-600",
+            "loggedin" => "bg-indigo-100 text-indigo-600",
+            "loggedout" => "bg-gray-100 text-gray-600",
+            "passwordchanged" or "passwordreset" => "bg-orange-100 text-orange-600",
+            "emailverified" => "bg-teal-100 text-teal-600",
+            "twofactorenabled" or "twofactordisabled" => "bg-purple-100 text-purple-600",
+            _ => "bg-bf-primary/10 text-bf-primary"
+        };
+    }
+
+    private string GetActionBadgeClass(string action)
+    {
+        var baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+        var colorClass = action?.ToLowerInvariant() switch
+        {
+            "created" => "bg-green-100 text-green-800",
+            "updated" => "bg-yellow-100 text-yellow-800",
+            "deleted" => "bg-red-100 text-red-800",
+            "loggedin" => "bg-indigo-100 text-indigo-800",
+            "loggedout" => "bg-gray-100 text-gray-800",
+            "passwordchanged" or "passwordreset" => "bg-orange-100 text-orange-800",
+            "emailverified" => "bg-teal-100 text-teal-800",
+            "twofactorenabled" or "twofactordisabled" => "bg-purple-100 text-purple-800",
+            _ => "bg-bf-primary/10 text-bf-primary"
+        };
+        return $"{baseClass} {colorClass}";
+    }
+}

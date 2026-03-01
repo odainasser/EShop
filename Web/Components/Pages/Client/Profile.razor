@@ -1,0 +1,9 @@
+@page "/client/account"
+@page "/client/profile"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Client")]
+@layout ClientLayout
+
+<PageTitle>@Localizer["MyProfile"]</PageTitle>
+
+<AccountProfile />

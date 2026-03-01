@@ -1,0 +1,86 @@
+@page "/client/activity"
+@layout Web.Components.Layout.ClientLayout
+@attribute [Authorize(Roles = "Client")]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Components.Common
+@inject IUserLogService UserLogService
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["MyActivity"] - @Localizer["Portal"]</PageTitle>
+
+<div>
+    <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <i class="bi bi-journal-text text-bf-primary"></i>
+                    @Localizer["MyActivity"]
+                </h1>
+                <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ViewYourRecentActivity"]</p>
+            </div>
+        </div>
+
+        <ActivityList Logs="@logs"
+        IsLoading="@isLoading"
+        ErrorMessage="@errorMessage"
+        PageIndex="@pageIndex"
+        TotalPages="@totalPages"
+        OnPageChanged="@LoadLogs"
+        ShowUserInfo="false"
+        EntityUrlResolver="@GetEntityUrl"
+        EmptyTitle="NoActivityYet"
+        EmptyMessage="NoActivityDescription" />
+    </div>
+</div>
+
+@code {
+    private List<UserLogDto> logs = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    private int pageIndex = 1;
+    private int pageSize = 15;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogs(1);
+    }
+
+    private async Task LoadLogs(int page)
+    {
+        if (page < 1) return;
+        
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await UserLogService.GetMyLogsAsync(page, pageSize);
+            logs = result.Items;
+            totalPages = result.TotalPages;
+            pageIndex = page;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadActivity"]}: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string? GetEntityUrl(string? entityName, string? entityId)
+    {
+        if (string.IsNullOrWhiteSpace(entityName))
+            return null;
+
+        return entityName.Trim().ToLowerInvariant() switch
+        {
+            "user" or "users" => "/client/account",
+            _ => null
+        };
+    }
+}

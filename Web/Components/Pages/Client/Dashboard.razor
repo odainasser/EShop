@@ -1,0 +1,15 @@
+@page "/client/dashboard"
+@layout ClientLayout
+@attribute [Authorize(Roles = "Client")]
+@using Microsoft.AspNetCore.Authorization
+@inject NavigationManager Navigation
+
+<PageTitle>@Localizer["Dashboard"] - @Localizer["BookingPortal"]</PageTitle>
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirect to main booking page
+        Navigation.NavigateTo("/client", replace: true);
+    }
+}

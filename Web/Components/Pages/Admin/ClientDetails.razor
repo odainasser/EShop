@@ -1,0 +1,208 @@
+@page "/admin/clients/{ClientId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.ClientsRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Web.Authorization
+@using Web.Components.Common
+@inject IUserManagementService UserService
+@inject IMediaService MediaService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["ViewDetails"] - @Localizer["Client"]</PageTitle>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
+            <div class="mb-8">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <i class="bi bi-person-badge text-bf-primary"></i>
+                    @Localizer["ViewDetails"]
+                </h1>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-bf-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            }
+            else if (client == null)
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-exclamation-triangle text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoDataFound"]</p>
+                </div>
+            }
+            else
+            {
+                <!-- Profile Picture -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["ProfilePicture"]</label>
+                    <div class="flex items-center gap-4">
+                        @if (!string.IsNullOrEmpty(avatarUrl))
+                        {
+                            <img src="@avatarUrl" alt="Profile Picture" class="h-20 w-20 rounded-full object-cover border border-gray-200" />
+                        }
+                        else
+                        {
+                            <div class="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
+                                <i class="bi bi-person text-3xl text-gray-400"></i>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Name Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["FirstName"]</label>
+                        <input type="text" 
+                               value="@client.FirstName" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700" 
+                               disabled />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["LastName"]</label>
+                        <input type="text" 
+                               value="@client.LastName" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700" 
+                               disabled />
+                    </div>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["Email"]</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" 
+                               value="@client.Email" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700" 
+                               disabled />
+                        @if (client.EmailConfirmed)
+                        {
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
+                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Confirmed"]
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Phone Number -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["PhoneNumber"]</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" 
+                               value="@(client.PhoneNumber ?? "-")" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700" 
+                               disabled />
+                        @if (client.PhoneNumberConfirmed)
+                        {
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
+                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Confirmed"]
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="mb-8">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">@Localizer["Status"]</label>
+                    <div class="flex items-center gap-3">
+                        @if (client.IsActive)
+                        {
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center justify-between pt-6 border-t border-gray-200">
+                    <div class="text-sm text-gray-500">
+                        <div class="flex flex-col gap-1">
+                            <div>
+                                <i class="bi bi-clock-history me-1"></i>
+                                @Localizer["CreatedAt"]: @client.CreatedAt.ToString("dd MMM yyyy, HH:mm")
+                            </div>
+                            @if (client.UpdatedAt.HasValue)
+                            {
+                                <div>
+                                    <i class="bi bi-pencil-square me-1"></i>
+                                    @Localizer["UpdatedAt"]: @client.UpdatedAt.Value.ToString("dd MMM yyyy, HH:mm")
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" @onclick="GoBack" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-bf-primary transition-colors duration-200">
+                            @Localizer["Close"]
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid ClientId { get; set; }
+
+    private UserResponse? client;
+    private string? avatarUrl;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        isLoading = true;
+        try
+        {
+            client = await UserService.GetUserByIdAsync(ClientId);
+            
+            if (client != null)
+            {
+                try
+                {
+                    var media = await MediaService.GetMediaForEntityAsync(ClientId, "User", "avatar");
+                    var avatar = media.FirstOrDefault();
+                    if (avatar != null)
+                    {
+                        avatarUrl = MediaService.GetMediaUrl(avatar);
+                    }
+                }
+                catch { }
+            }
+        }
+        catch
+        {
+            client = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/clients");
+    }
+}

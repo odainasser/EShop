@@ -1,0 +1,7 @@
+# Configure your API URL in appsettings.json under "AppUrl"
+@Application_HostAddress = {{$dotenv APP_URL}}
+
+GET {{Application_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

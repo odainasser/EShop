@@ -1,0 +1,85 @@
+@using Web.Components.Layout
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="@GetLayout(routeData)">
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(PublicLayout)">
+                <Web.Components.Pages.Public.NotFound />
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var resp = await Http.GetAsync("api/settings");
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = await resp.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                string? primary = GetJsonString(root, "primaryColor");
+                if (string.IsNullOrWhiteSpace(primary))
+                    primary = GetJsonString(root, "PrimaryColor");
+
+                string? company = GetJsonString(root, "companyName");
+                if (string.IsNullOrWhiteSpace(company))
+                    company = GetJsonString(root, "CompanyName");
+
+                if (!string.IsNullOrWhiteSpace(primary))
+                {
+                    // call JS helper to set CSS variables
+                    await JSRuntime.InvokeVoidAsync("setThemeColors", primary);
+                }
+
+                if (!string.IsNullOrWhiteSpace(company))
+                {
+                    await JSRuntime.InvokeVoidAsync("eval", $"document.documentElement.style.setProperty('--bf-company-name', '{company}');");
+                }
+            }
+        }
+        catch
+        {
+            // ignore - fall back to default CSS variables
+        }
+    }
+
+    private static string? GetJsonString(System.Text.Json.JsonElement el, string name)
+    {
+        foreach (var prop in el.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+                return prop.Value.GetString();
+        }
+        return null;
+    }
+
+    private Type GetLayout(RouteData routeData)
+    {
+        var pageType = routeData?.PageType;
+        var ns = pageType?.Namespace ?? string.Empty;
+
+        if (ns.Contains(".Pages.Public", StringComparison.OrdinalIgnoreCase))
+            return typeof(PublicLayout);
+
+        if (ns.Contains(".Pages.Admin", StringComparison.OrdinalIgnoreCase))
+            return typeof(Layout.AdminLayout);
+
+        // Fallback
+        return typeof(Layout.AdminLayout);
+    }
+}

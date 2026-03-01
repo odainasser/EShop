@@ -1,0 +1,32 @@
+@inject IJsonStringLocalizer Localizer
+
+<!-- Client-specific sticky footer -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-sm z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4 text-sm text-gray-700">
+                <a href="/client/bookings" class="flex items-center gap-2 hover:text-bf-primary">
+                    <i class="bi bi-calendar3"></i>
+                    <span>@Localizer["AllBookings"]</span>
+                </a>
+                <a href="/client/account" class="flex items-center gap-2 hover:text-bf-primary">
+                    <i class="bi bi-person"></i>
+                    <span>@Localizer["MyProfile"]</span>
+                </a>
+                <a href="/client/organization" class="flex items-center gap-2 hover:text-bf-primary">
+                    <i class="bi bi-building"></i>
+                    <span>@Localizer["OrganizationInfo"]</span>
+                </a>
+            </div>
+
+            <div class="text-sm text-gray-500">
+                <span>&copy; @DateTime.Now.Year&nbsp;@Localizer["SharjahMuseumsAuthority"]</span>
+            </div>
+
+            <div class="text-sm hidden sm:flex items-center gap-4 text-gray-600">
+                <a href="tel:+97165665002" class="hover:text-bf-primary">+971 6 566 5002</a>
+                <a href="mailto:bookings@sma.gov.ae" class="hover:text-bf-primary">bookings@sma.gov.ae</a>
+            </div>
+        </div>
+    </div>
+</footer>

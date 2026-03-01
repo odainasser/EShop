@@ -1,0 +1,422 @@
+@page "/admin/users"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.UsersRead)]
+@using Microsoft.AspNetCore.Authorization
+@using Web.Authorization
+@using Web.Components.Common
+@using System.Globalization
+@inject IUserManagementService UserService
+@inject IRoleManagementService RoleService
+@inject NavigationManager Navigation
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["UsersManagement"] - BitFlow</PageTitle>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-people text-bf-primary"></i>
+                        @Localizer["UsersManagement"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["ManageUserAccountsRolesPermissions"]</p>
+                </div>
+                <div class="flex gap-3 w-full sm:w-auto">
+                    <AuthorizeView Policy="Permission:users.write">
+                        <Authorized>
+                            <button @onclick="NavigateToCreate" 
+                                    class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>@Localizer["AddUser"]</span>
+                            </button>
+                        </Authorized>
+                        <NotAuthorized>
+                            <button disabled 
+                                    class="inline-flex items-center gap-2 py-3 px-6 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed font-medium">
+                                <i class="bi bi-plus-circle"></i>
+                                <span>@Localizer["AddUser"]</span>
+                            </button>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="mb-6">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                            <i class="bi bi-search text-gray-400"></i>
+                        </div>
+                        <input type="text" 
+                               @bind="searchTerm" 
+                               @bind:event="oninput"
+                               @onkeypress="HandleSearchKeyPress"
+                               class="w-full ps-10 pe-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-bf-primary/50 focus:border-bf-primary transition-all duration-200" 
+                               placeholder="@Localizer["Search"]..." />
+                    </div>
+                    <div class="relative min-w-[150px]">
+                        <select @onchange="OnRoleFilterChanged" class="appearance-none w-full bg-white border border-gray-300 text-gray-700 py-3 px-4 pe-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-bf-primary">
+                            <option value="">@Localizer["AllRoles"]</option>
+                            @foreach (var role in availableRoles)
+                            {
+                                <option value="@role.NameEn">@(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.NameEn)</option>
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 end-0 flex items-center px-2 text-gray-700">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                    <button @onclick="SearchUsers" 
+                            class="inline-flex items-center gap-2 py-3 px-6 bg-bf-primary text-bf-primary-contrast rounded-lg hover:opacity-90 transition-all duration-200 shadow-lg hover:shadow-xl font-medium">
+                        <i class="bi bi-search"></i>
+                        <span class="hidden sm:inline">@Localizer["Search"]</span>
+                    </button>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <div class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-bf-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                    <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                    <span class="text-red-800">@errorMessage</span>
+                </div>
+            }
+            else if (users == null || !users.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">@Localizer["NoUsersFound"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["User"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Email"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Roles"]</th>
+                                <th class="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Status"]</th>
+                                <th class="px-6 py-3 text-end text-xs font-medium text-gray-500 uppercase tracking-wider">@Localizer["Actions"]</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach (var user in filteredUsers)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            @if (!string.IsNullOrEmpty(user.AvatarUrl))
+                                            {
+                                                <img src="@user.AvatarUrl" alt="@user.FullName" class="flex-shrink-0 h-10 w-10 rounded-full object-cover border border-gray-200" />
+                                            }
+                                            else
+                                            {
+                                                <div class="flex-shrink-0 h-10 w-10 bg-bf-primary/10 rounded-full flex items-center justify-center">
+                                                    <i class="bi bi-person-fill text-bf-primary"></i>
+                                                </div>
+                                            }
+                                            <div class="ms-4">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    @user.FullName
+                                                    @if (user.IsSystemUser)
+                                                    {
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 ms-2" title="@Localizer["SystemUser"]">
+                                                            <i class="bi bi-lock-fill me-1"></i> @Localizer["SystemUser"]
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">@user.Email</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex flex-wrap gap-1">
+                                            @foreach (var role in user.Roles)
+                                            {
+                                                <a href="@($"/admin/roles/edit/{role.Id}")"
+                                                   class="text-bf-primary hover:underline text-sm"
+                                                   title="@(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.Name)">
+                                                    @(CultureInfo.CurrentUICulture.Name.StartsWith("ar") ? role.NameAr : role.Name)
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        @if (user.IsActive)
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <i class="bi bi-check-circle-fill me-1"></i> @Localizer["Active"]
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                <i class="bi bi-x-circle-fill me-1"></i> @Localizer["Inactive"]
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-end text-sm font-medium">
+                                        <div class="flex items-center justify-end gap-1">
+                                            <AuthorizeView Policy="Permission:system.audit">
+                                                <Authorized>
+                                                    <button @onclick="() => ViewLogs(user.Id)" 
+                                                            class="p-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200" 
+                                                            title="@Localizer["ViewLogs"]">
+                                                        <i class="bi bi-journal-text"></i>
+                                                    </button>
+                                                    <button @onclick="() => ViewUserActivities(user.Id)" 
+                                                            class="p-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 rounded-lg transition-all duration-200" 
+                                                            title="@Localizer["ViewUserActivities"]">
+                                                        <i class="bi bi-activity"></i>
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
+
+                                            <AuthorizeView Policy="Permission:users.write">
+                                                <Authorized>
+                                                    @if (!user.IsSystemUser)
+                                                    {
+                                                        <button @onclick="() => NavigateToEdit(user.Id)" 
+                                                                class="p-2 text-sky-600 hover:text-sky-700 hover:bg-sky-50 rounded-lg transition-all duration-200" 
+                                                                title="@Localizer["Edit"]">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button @onclick="() => NavigateToEdit(user.Id)"
+                                                                class="p-2 text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-all duration-200" 
+                                                                title="@Localizer["ViewDetails"]">
+                                                            <i class="bi bi-eye"></i>
+                                                        </button>
+                                                    }
+                                                </Authorized>
+                                                <NotAuthorized>
+                                                    @if (user.IsSystemUser)
+                                                    {
+                                                        <button @onclick="() => NavigateToEdit(user.Id)"
+                                                                class="p-2 text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-all duration-200" 
+                                                                title="@Localizer["ViewDetails"]">
+                                                            <i class="bi bi-eye"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button disabled class="p-2 text-gray-300 cursor-not-allowed">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    }
+                                                </NotAuthorized>
+                                            </AuthorizeView>
+                                            <AuthorizeView Policy="Permission:users.delete">
+                                                <Authorized>
+                                                    @if (!user.IsSystemUser)
+                                                    {
+                                                        <button @onclick="() => ConfirmDelete(user.Id)" 
+                                                                class="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all duration-200" 
+                                                                title="@Localizer["Delete"]">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button disabled 
+                                                                class="p-2 text-gray-300 cursor-not-allowed" 
+                                                                title="@Localizer["SystemAdminModifyWarning"]">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    }
+                                                </Authorized>
+                                                <NotAuthorized>
+                                                    <button disabled class="p-2 text-gray-300 cursor-not-allowed">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </NotAuthorized>
+                                            </AuthorizeView>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Pagination PageIndex="@pageIndex" 
+                                TotalPages="@totalPages" 
+                                TotalCount="@totalCount" 
+                                PageSize="@pageSize" 
+                                OnPageChanged="@OnPageChanged" />
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<ConfirmModal IsVisible="@showDeleteConfirm"
+              Title="@Localizer["DeleteUserTitle"]"
+              Message="@Localizer["DeleteUserConfirmation"]"
+              OnConfirm="@DeleteUser"
+              OnCancel="@CancelDelete"
+              IsDanger="true" />
+
+@code {
+    private List<UserResponse> users = new();
+    private List<RoleResponse> availableRoles = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private bool showDeleteConfirm = false;
+    private Guid userToDelete;
+    private string? selectedRole = null;
+    private string searchTerm = string.Empty;
+    
+    // Pagination
+    private int pageIndex = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    private IEnumerable<UserResponse> filteredUsers => string.IsNullOrWhiteSpace(searchTerm) 
+        ? users 
+        : users.Where(u => 
+            (u.FullName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (u.Email?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (u.PhoneNumber?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoles();
+        await LoadUsers();
+    }
+
+    private async Task LoadRoles()
+    {
+        try
+        {
+            // Fetch all roles for the filter dropdown, exclude Client role
+            var result = await RoleService.GetAllRolesAsync(1, 100);
+            availableRoles = result.Items.Where(r => r.NameEn != "Client").ToList();
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't stop user loading
+            Console.WriteLine($"Failed to load roles: {ex.Message}");
+        }
+    }
+
+    private async Task LoadUsers()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        
+        try
+        {
+            // Exclude users with Client role from the admin users list
+            var result = await UserService.GetAllUsersAsync(pageIndex, pageSize, selectedRole, excludeRole: "Client");
+            users = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToLoadUsers"] + $": {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+    
+    private async Task OnPageChanged(int newPageIndex)
+    {
+        pageIndex = newPageIndex;
+        await LoadUsers();
+    }
+
+    private async Task OnRoleFilterChanged(ChangeEventArgs e)
+    {
+        selectedRole = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(selectedRole))
+        {
+            selectedRole = null;
+        }
+        pageIndex = 1; // Reset to first page when filter changes
+        await LoadUsers();
+    }
+
+    private void SearchUsers()
+    {
+        // Trigger re-render with filtered results
+        StateHasChanged();
+    }
+
+    private void HandleSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            SearchUsers();
+        }
+    }
+
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/admin/users/create");
+    }
+
+    private void NavigateToEdit(Guid userId)
+    {
+        Navigation.NavigateTo($"/admin/users/edit/{userId}");
+    }
+
+    private void ConfirmDelete(Guid userId)
+    {
+        userToDelete = userId;
+        showDeleteConfirm = true;
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirm = false;
+        userToDelete = Guid.Empty;
+    }
+
+    private async Task DeleteUser()
+    {
+        try
+        {
+            await UserService.DeleteUserAsync(userToDelete);
+            showDeleteConfirm = false;
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = Localizer["FailedToDeleteUser"] + $": {ex.Message}";
+            showDeleteConfirm = false;
+        }
+    }
+
+    private void ViewLogs(Guid userId)
+    {
+        var uri = $"/admin/logs?entityName=User&entityId={userId}";
+        Navigation.NavigateTo(uri, forceLoad: false);
+    }
+
+    private void ViewUserActivities(Guid userId)
+    {
+        var uri = $"/admin/logs?userId={userId}";
+        Navigation.NavigateTo(uri, forceLoad: false);
+    }
+}

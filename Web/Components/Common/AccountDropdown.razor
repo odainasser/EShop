@@ -1,0 +1,91 @@
+@using Microsoft.AspNetCore.Authorization
+@inject IJsonStringLocalizer Localizer
+@inject NavigationManager Navigation
+
+<!-- Account Dropdown - Shared component for user menu -->
+<AuthorizeView Context="auth">
+    <Authorized>
+        @if (auth.User.Identity?.IsAuthenticated == true)
+        {
+            <Dropdown Alignment="right" ToggleCss="bf-dropdown-toggle bf-dropdown-compact">
+                <ToggleContent>
+                    <div class="flex items-center gap-2">
+                        @if (!string.IsNullOrEmpty(AvatarUrl))
+                        {
+                            <img src="@AvatarUrl" alt="User avatar" class="h-8 w-8 rounded-full object-cover border-2 border-gray-500" />
+                        }
+                        else
+                        {
+                            <div class="h-8 w-8 rounded-full bg-bf-primary flex items-center justify-center text-bf-primary-contrast text-sm font-medium">
+                                @GetInitial()
+                            </div>
+                        }
+                        <div class="hidden sm:block text-left">
+                            <p class="text-sm font-medium text-white leading-tight">@DisplayName</p>
+                        </div>
+                        <i class="bi bi-chevron-down text-xs text-gray-300"></i>
+                    </div>
+                </ToggleContent>
+                <ChildContent>
+                    <div class="px-4 py-2 border-b border-gray-100">
+                        <p class="text-sm font-medium text-gray-900">@DisplayName</p>
+                        <p class="text-xs text-gray-500">@UserEmail</p>
+                    </div>
+                    @MenuItems
+                    <div class="border-t border-gray-100 my-1"></div>
+                    <button @onclick="HandleSignOut" 
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm !text-red-600 hover:!bg-red-50">
+                        <i class="bi bi-box-arrow-right rtl:rotate-180"></i>
+                        <span>@Localizer["SignOut"]</span>
+                    </button>
+                </ChildContent>
+            </Dropdown>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <a href="/login" class="px-4 py-2 text-sm text-bf-primary hover:text-green-700 font-medium">
+            @Localizer["SignIn"]
+        </a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    /// <summary>
+    /// The user's display name
+    /// </summary>
+    [Parameter] public string DisplayName { get; set; } = "";
+
+    /// <summary>
+    /// The user's avatar URL (optional)
+    /// </summary>
+    [Parameter] public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// The user's email address
+    /// </summary>
+    [Parameter] public string? UserEmail { get; set; }
+
+    /// <summary>
+    /// Default initial letter when no avatar or display name
+    /// </summary>
+    [Parameter] public string DefaultInitial { get; set; } = "U";
+
+    /// <summary>
+    /// Custom menu items to render in the dropdown
+    /// </summary>
+    [Parameter] public RenderFragment? MenuItems { get; set; }
+
+    private string GetInitial()
+    {
+        if (!string.IsNullOrEmpty(DisplayName) && DisplayName.Length > 0)
+        {
+            return DisplayName[0].ToString().ToUpper();
+        }
+        return DefaultInitial;
+    }
+
+    private void HandleSignOut()
+    {
+        Navigation.NavigateTo("/logout", true);
+    }
+}

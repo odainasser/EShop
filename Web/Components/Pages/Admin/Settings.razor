@@ -1,0 +1,167 @@
+@page "/admin/settings"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Policy = "Permission:" + Permissions.SystemSettings)]
+@inject ISystemSettingService SettingService
+@inject NavigationManager NavigationManager
+@inject IJsonStringLocalizer L
+
+<PageTitle>@L["SettingsTitle"] - Sharjah Museums Authority</PageTitle>
+
+<div class="max-w-7xl mx-auto">
+    <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                    <i class="bi bi-gear text-bf-primary"></i>
+                    @L["SettingsTitle"]
+                </h1>
+            </div>
+        </div>
+        @if (model == null)
+        {
+            <div class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@model" OnValidSubmit="HandleSave" FormName="settingsForm">
+                <DataAnnotationsValidator />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-exclamation-triangle-fill text-red-600 text-lg mt-0.5"></i>
+                        <span class="text-red-800">@errorMessage</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                        <i class="bi bi-check-circle-fill text-green-600 text-lg mt-0.5"></i>
+                        <span class="text-green-800">@successMessage</span>
+                    </div>
+                }
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Email Settings -->
+                    <section class="lg:col-span-2">
+                        <div class="border-b pb-4 mb-4">
+                            <h2 class="text-lg font-semibold text-gray-700">@L["EmailSettings"]</h2>
+                            <p class="text-sm text-gray-500">@L["ConfigureEmailSettings"]</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="smtpHost" class="block text-sm font-medium text-gray-700 mb-2">@L["SmtpHostLabel"]</label>
+                                <InputText id="smtpHost" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.SmtpHost" />
+                            </div>
+                            <div>
+                                <label for="smtpPort" class="block text-sm font-medium text-gray-700 mb-2">@L["SmtpPortLabel"]</label>
+                                <InputNumber id="smtpPort" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.SmtpPort" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="smtpUsername" class="block text-sm font-medium text-gray-700 mb-2">@L["SmtpUsernameLabel"]</label>
+                                <InputText id="smtpUsername" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.SmtpUsername" />
+                            </div>
+                            <div>
+                                <label for="smtpPassword" class="block text-sm font-medium text-gray-700 mb-2">@L["SmtpPasswordLabel"]</label>
+                                <InputText id="smtpPassword" type="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.SmtpPassword" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label for="fromAddress" class="block text-sm font-medium text-gray-700 mb-2">@L["FromAddressLabel"]</label>
+                                <InputText id="fromAddress" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.FromAddress" />
+                            </div>
+                            <div>
+                                <label for="fromNameEn" class="block text-sm font-medium text-gray-700 mb-2">@L["FromNameEnLabel"]</label>
+                                <InputText id="fromNameEn" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.FromNameEn" />
+                            </div>
+                            <div>
+                                <label for="fromNameAr" class="block text-sm font-medium text-gray-700 mb-2">@L["FromNameArLabel"]</label>
+                                <InputText id="fromNameAr" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" @bind-Value="model.FromNameAr" />
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="flex items-center">
+                                <Checkbox Id="enableSsl" @bind-Value="model.EnableSsl" Label="@Localizer["EnableSslLabel"]" />
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
+                    <button type="submit" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-800 text-white font-medium rounded-lg hover:from-purple-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" disabled="@isLoading">
+                        @if (isLoading)
+                        {
+                            <svg class="animate-spin -ms-1 me-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>@L["Processing"]</span>
+                        }
+                        else
+                        {
+                            <span>@L["Save"]</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    private SettingsDto? model;
+    private string? errorMessage;
+    private string? successMessage;
+    private bool isLoading = false;
+    private string companyName = "Sharjah Museums Authority";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load both email and theme settings via a single DTO
+            model = await SettingService.GetSettingsAsync();
+            if (model != null)
+            {
+                companyName = !string.IsNullOrEmpty(model.CompanyNameEn) ? model.CompanyNameEn : model.CompanyNameAr;
+                if (string.IsNullOrEmpty(companyName)) companyName = "Sharjah Museums Authority";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load settings.";
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+            successMessage = null;
+
+            await SettingService.UpdateSettingsAsync(model!);
+            successMessage = "Settings saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to save settings.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

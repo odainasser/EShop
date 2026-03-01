@@ -1,0 +1,228 @@
+@page "/"
+@layout PublicLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Components.Common
+@using Web.Services
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>SMA - .NET Template</PageTitle>
+
+<!-- .NET Template Landing Page -->
+<div class="min-h-screen bg-gray-50">
+    
+    <!-- Hero Section -->
+    <div class="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-20">
+            <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="hero-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M0 20h40M20 0v40" stroke="currentColor" stroke-width="0.5" fill="none" class="text-gray-500"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#hero-grid)" />
+            </svg>
+        </div>
+        
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+            <div class="text-center max-w-4xl mx-auto">
+                <!-- Badge -->
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-bf-primary/20 backdrop-blur-sm rounded-full text-bf-primary text-sm font-medium mb-8 border border-bf-primary/30">
+                    <i class="bi bi-code-slash"></i>
+                    <span>.NET 10 Template</span>
+                </div>
+                
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                    SMA
+                    <span class="block text-bf-primary">.NET Template</span>
+                </h1>
+                
+                <p class="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
+                    @Localizer["TemplateDesc"]
+                </p>
+                
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    @if (!isAuthenticated)
+                    {
+                        <a href="/login" 
+                           class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-bf-primary text-bf-primary-contrast font-semibold rounded-xl hover:opacity-90 transition-all duration-200 shadow-lg">
+                            <i class="bi bi-box-arrow-in-right text-lg"></i>
+                            <span>@Localizer["SignIn"]</span>
+                        </a>
+                        <a href="/register" 
+                           class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-xl hover:bg-white/20 transition-all duration-200 border border-white/20">
+                            <i class="bi bi-person-plus text-lg"></i>
+                            <span>@Localizer["Register"]</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="@GetDashboardUrl()" 
+                           class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-bf-primary text-bf-primary-contrast font-semibold rounded-xl hover:opacity-90 transition-all duration-200 shadow-lg">
+                            <i class="bi bi-speedometer2 text-lg"></i>
+                            <span>@Localizer["Dashboard"]</span>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">@Localizer["TemplateFeatures"]</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">@Localizer["TemplateFeaturesDesc"]</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-bf-primary/10 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-shield-check text-2xl text-bf-primary"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureAuth"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureAuthDesc"]</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-translate text-2xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureMultiLang"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureMultiLangDesc"]</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-people text-2xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureUserMgmt"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureUserMgmtDesc"]</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-speedometer2 text-2xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureAdminDash"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureAdminDashDesc"]</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-journal-text text-2xl text-amber-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureAudit"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureAuditDesc"]</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+                        <i class="bi bi-palette text-2xl text-red-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">@Localizer["FeatureTailwind"]</h3>
+                    <p class="text-gray-600">@Localizer["FeatureTailwindDesc"]</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack Section -->
+    <div class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">@Localizer["TechStack"]</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">@Localizer["TechStackDesc"]</p>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-4">
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">.NET 10</span>
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">Blazor WebAssembly</span>
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">Entity Framework Core</span>
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">SQL Server</span>
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">Tailwind CSS</span>
+                <span class="px-6 py-3 bg-white rounded-full text-gray-700 font-medium shadow-sm border border-gray-200">JWT Authentication</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl overflow-hidden">
+                <div class="absolute inset-0 opacity-10">
+                    <svg class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="cta-pattern" width="60" height="60" patternUnits="userSpaceOnUse">
+                                <circle cx="30" cy="30" r="2" fill="currentColor"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#cta-pattern)" />
+                    </svg>
+                </div>
+                
+                <div class="relative px-8 py-12 md:px-12 md:py-16 text-center">
+                    <h3 class="text-2xl md:text-3xl font-bold text-white mb-4">@Localizer["ReadyToStart"]</h3>
+                    <p class="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
+                        @Localizer["ReadyToStartDesc"]
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row justify-center gap-4">
+                        @if (!isAuthenticated)
+                        {
+                            <a href="/login" class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-bf-primary text-bf-primary-contrast font-semibold rounded-xl hover:opacity-90 transition-colors shadow-lg">
+                                <span>@Localizer["SignIn"]</span>
+                                <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="@GetDashboardUrl()" class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-bf-primary text-bf-primary-contrast font-semibold rounded-xl hover:opacity-90 transition-colors shadow-lg">
+                                <span>@Localizer["Dashboard"]</span>
+                                <i class="bi bi-arrow-right rtl:rotate-180"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="py-8 public-footer">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p>&copy; @DateTime.Now.Year SMA .NET Template. @Localizer["AllRightsReserved"]</p>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private bool isAuthenticated = false;
+    private bool isClient = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isAuthenticated = user?.Identity?.IsAuthenticated == true;
+        isClient = isAuthenticated && user!.IsInRole("Client");
+    }
+
+    private string GetDashboardUrl()
+    {
+        if (isClient)
+        {
+            return "/client";
+        }
+        return "/admin";
+    }
+}

@@ -1,0 +1,151 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Components.Common
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="min-h-screen bg-gray-50 flex flex-col">
+    <!-- Top Navigation Bar for Public Pages -->
+    <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-sm shadow-sm border-b border-gray-700 h-16" style="background-color: #231f20;">
+        <div class="px-4 lg:px-6 h-full max-w-7xl mx-auto">
+            <div class="flex justify-between items-center h-full">
+                <!-- Left: Logo -->
+                <Logo Href="/" Alt="SMA logo" Size="Logo.LogoSize.Full" />
+
+                <!-- Right: Language + Auth Buttons -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <LanguageSelector Alignment="right" 
+                                      ToggleCss="bf-dropdown-toggle bf-dropdown-compact" 
+                                      ToggleStyle="background: transparent; color: #ffffff; border-color: rgba(255,255,255,0.15);"
+                                      MenuClass="bf-dropdown-white" />
+                    
+                    <AuthorizeView>
+                        <Authorized>
+                            <a href="@GetDashboardUrl(context)" 
+                               class="px-4 py-2 bg-bf-primary text-bf-primary-contrast font-medium text-sm rounded-lg hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+                                <i class="bi bi-speedometer2"></i>
+                                <span class="hidden sm:inline">@Localizer["Dashboard"]</span>
+                            </a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a href="/register" 
+                               class="hidden sm:flex px-4 py-2 border border-gray-500 text-white font-medium text-sm rounded-lg hover:bg-gray-700 transition-all duration-200 items-center gap-2">
+                                <i class="bi bi-person-plus"></i>
+                                <span>@Localizer["Register"]</span>
+                            </a>
+                            <a href="/login" 
+                               class="px-4 py-2 bg-bf-primary text-bf-primary-contrast font-medium text-sm rounded-lg hover:opacity-90 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span>@Localizer["SignIn"]</span>
+                            </a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content with top padding for fixed nav -->
+    <main class="pt-16 flex-1">
+        <div class="public-content">
+            @Body
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto public-footer">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Brand Column -->
+                <div class="space-y-4">
+                    <Logo Href="/" Alt="SMA logo" />
+                    <p class="text-sm text-white">
+                        @Localizer["TemplateDesc"]
+                    </p>
+                </div>
+
+                <!-- Quick Links Column -->
+                <div>
+                    <h3 class="font-semibold text-white mb-4">@Localizer["QuickLinks"]</h3>
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="/" class="text-sm text-white hover:text-bf-primary transition-colors flex items-center gap-2">
+                                <i class="bi bi-house text-xs"></i>
+                                @Localizer["Home"]
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/login" class="text-sm text-white hover:text-bf-primary transition-colors flex items-center gap-2">
+                                <i class="bi bi-box-arrow-in-right text-xs"></i>
+                                @Localizer["SignIn"]
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/register" class="text-sm text-white hover:text-bf-primary transition-colors flex items-center gap-2">
+                                <i class="bi bi-person-plus text-xs"></i>
+                                @Localizer["Register"]
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Contact Column -->
+                <div>
+                    <h3 class="font-semibold text-white mb-4">@Localizer["ContactUs"]</h3>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2 text-sm text-white">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="text-bf-primary">
+                                <path d="M12 2L22 12L12 22L2 12L12 2Z" fill="#0078D4" />
+                            </svg>
+                            <a href="https://dev.azure.com/ShjMA/SMA-Template" target="_blank" class="hover:text-bf-primary transition-colors">Azure DevOps Repository</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom Bar -->
+            <div class="mt-8 pt-6 border-t border-gray-700">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p class="text-sm text-white">
+                        � @DateTime.Now.Year SMA .NET Template. @Localizer["AllRightsReserved"]
+                    </p>
+                    <div class="flex items-center gap-6">
+                        <a href="#" class="text-sm hover:text-bf-primary transition-colors">
+                            @Localizer["PrivacyPolicy"]
+                        </a>
+                        <a href="#" class="text-sm hover:text-bf-primary transition-colors">
+                            @Localizer["TermsOfService"]
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<div id="blazor-error-ui" class="fixed bottom-0 left-0 right-0 bg-red-600 text-white p-4 shadow-lg hidden" data-nosnippet>
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+        <div class="flex items-center gap-3">
+            <i class="bi bi-exclamation-triangle-fill text-xl"></i>
+            <span>@Localizer["ErrorOccurred"]</span>
+            <a href="." class="underline hover:no-underline">@Localizer["Reload"]</a>
+        </div>
+        <button class="text-white hover:text-gray-200 text-2xl" onclick="document.getElementById('blazor-error-ui').style.display='none'">&times;</button>
+    </div>
+</div>
+
+@code {
+    private string GetDashboardUrl(AuthenticationState context)
+    {
+        var user = context.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            if (user.IsInRole("Client"))
+            {
+                return "/client";
+            }
+            return "/admin";
+        }
+        return "/login";
+    }
+}

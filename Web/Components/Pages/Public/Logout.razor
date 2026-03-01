@@ -1,0 +1,54 @@
+@page "/logout"
+@layout PublicLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Web.Services
+@using Web.Authentication
+@using Microsoft.JSInterop
+@inject IAuthenticationService AuthService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JSRuntime
+@inject IJsonStringLocalizer Localizer
+
+<div class="flex items-center justify-center min-h-screen bg-gray-50">
+    <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+        <h2 class="text-xl font-semibold text-gray-900">@Localizer["LoggingOut"]</h2>
+        <p class="text-gray-500 mt-2">@Localizer["SigningOutMessage"]</p>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            // Attempt to logout via service
+            await AuthService.LogoutAsync();
+
+            // Best-effort: clear local storage
+            try { await JSRuntime.InvokeVoidAsync("localStorage.clear"); } catch { }
+
+            // Avoid calling provider notify here - rely on full reload to reset state
+        }
+        catch
+        {
+            // swallow errors to avoid unhandled exception UI
+        }
+        finally
+        {
+            // Use a browser-level full redirect to avoid Blazor's routing/authorization lifecycle causing the error UI
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("eval", "window.location.replace('/')");
+            }
+            catch
+            {
+                try { Navigation.NavigateTo("/", forceLoad: true); } catch { }
+            }
+        }
+    }
+}

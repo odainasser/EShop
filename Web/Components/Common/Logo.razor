@@ -1,0 +1,66 @@
+@* Unified Logo component - use across headers, footers, and panels *@
+
+<a href="@Href" class="@AnchorClasses">
+    <div class="@ContainerClasses" style="background-color: #231f20;">
+        <img src="logo.png" alt="@Alt" class="@ImageClasses" />
+    </div>
+</a>
+
+@code {
+    /// <summary>
+    /// Link destination when logo is clicked
+    /// </summary>
+    [Parameter] public string Href { get; set; } = "/";
+
+    /// <summary>
+    /// Alt text for accessibility
+    /// </summary>
+    [Parameter] public string Alt { get; set; } = "Logo";
+
+    /// <summary>
+    /// Size variant: Small, Medium (default), Large, Full (fills header height)
+    /// </summary>
+    [Parameter] public LogoSize Size { get; set; } = LogoSize.Medium;
+
+    /// <summary>
+    /// Additional CSS classes for the container
+    /// </summary>
+    [Parameter] public string? ContainerClass { get; set; }
+
+    /// <summary>
+    /// Whether to show shadow
+    /// </summary>
+    [Parameter] public bool ShowShadow { get; set; } = true;
+
+    private string AnchorClasses => Size switch
+    {
+        LogoSize.Full => "flex items-center h-full py-2",
+        _ => "flex items-center"
+    };
+
+    private string ContainerClasses => Size switch
+    {
+        LogoSize.Small => $"h-8 px-1.5 rounded-md flex items-center justify-center {(ShowShadow ? "shadow-sm" : "")} {ContainerClass}".Trim(),
+        LogoSize.Medium => $"h-10 px-2 rounded-lg flex items-center justify-center {(ShowShadow ? "shadow-sm" : "")} {ContainerClass}".Trim(),
+        LogoSize.Large => $"h-12 px-3 rounded-lg flex items-center justify-center {(ShowShadow ? "shadow-md" : "")} {ContainerClass}".Trim(),
+        LogoSize.Full => $"h-full px-3 rounded-lg flex items-center justify-center {(ShowShadow ? "shadow-sm" : "")} {ContainerClass}".Trim(),
+        _ => $"h-10 px-2 rounded-lg flex items-center justify-center {(ShowShadow ? "shadow-sm" : "")} {ContainerClass}".Trim()
+    };
+
+    private string ImageClasses => Size switch
+    {
+        LogoSize.Small => "h-5 w-auto",
+        LogoSize.Medium => "h-7 w-auto",
+        LogoSize.Large => "h-9 w-auto",
+        LogoSize.Full => "h-full w-auto max-h-10",
+        _ => "h-7 w-auto"
+    };
+
+    public enum LogoSize
+    {
+        Small,
+        Medium,
+        Large,
+        Full
+    }
+}

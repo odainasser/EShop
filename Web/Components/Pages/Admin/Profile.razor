@@ -1,0 +1,8 @@
+@page "/admin/account/profile"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Web.Components.Common
+
+<PageTitle>@Localizer["MyProfile"]</PageTitle>
+
+<AccountProfile />

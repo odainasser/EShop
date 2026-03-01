@@ -1,0 +1,182 @@
+@page "/admin/logs"
+@page "/admin/logs/{UserId:guid}"
+@attribute [Authorize]
+@attribute [RequirePermission(Permissions.SystemAudit)]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@using Web.Components.Common
+@inject IUserLogService UserLogService
+@inject IUserManagementService UserManagementService
+@inject NavigationManager NavigationManager
+@inject IJsonStringLocalizer Localizer
+
+<PageTitle>@Localizer["AuditLogs"] - @Localizer["AdminPanel"]</PageTitle>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8 px-2 sm:px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <i class="bi bi-journal-text text-bf-primary"></i>
+                        @Localizer["AuditLogs"]
+                    </h1>
+                    <p class="text-gray-600 mt-2 text-sm sm:text-base">@Localizer["MonitorActivities"]</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    @if (UserId.HasValue || !string.IsNullOrEmpty(EntityId))
+                    {
+                        <div class="text-sm text-gray-600 me-3 hidden sm:block">
+                            @if (UserId.HasValue)
+                            {
+                                <span>@Localizer["ShowingLogsFor"] <strong>@(userDisplayName ?? UserId.ToString())</strong></span>
+                            }
+                            else if (!string.IsNullOrEmpty(EntityName))
+                            {
+                                <span>@Localizer["ShowingLogsFor"] <strong>@Localizer[$"Entity_{EntityName}"]</strong></span>
+                            }
+                        </div>
+                        <button @onclick="ResetLogs" class="inline-flex items-center gap-2 py-2 px-3 bg-white border border-gray-200 rounded-md text-sm text-gray-700 hover:bg-gray-50">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>@Localizer["Reset"]</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <ActivityList Logs="@logs"
+            IsLoading="@isLoading"
+            ErrorMessage="@errorMessage"
+            PageIndex="@pageIndex"
+            TotalPages="@totalPages"
+            OnPageChanged="@OnPageChanged"
+            ShowUserInfo="true"
+            UserEditUrlTemplate="/admin/users/edit/{0}"
+            EntityUrlResolver="@GetEntityUrl"
+            EmptyTitle="NoLogsFound"
+            EmptyMessage="NoActivityDescription" />
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<UserLogDto> logs = new();
+    private bool isLoading = true;
+    private string? errorMessage;
+
+    [Parameter]
+    public Guid? UserId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? EntityName { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string? EntityId { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public int? Page { get; set; }
+
+    private string? userDisplayName;
+
+    private int pageIndex = 1;
+    private int pageSize = 20;
+    private int totalPages = 1;
+    private int totalCount = 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (UserId == null)
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            var query = QueryHelpers.ParseQuery(uri.Query);
+            if (query.TryGetValue("userId", out var values))
+            {
+                if (Guid.TryParse(values.FirstOrDefault(), out var parsed))
+                {
+                    UserId = parsed;
+                }
+            }
+        }
+        
+        pageIndex = Page ?? 1;
+        await LoadLogs();
+    }
+
+    private async Task LoadLogs()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await UserLogService.GetLogsAsync(pageIndex, pageSize, UserId, EntityName, EntityId);
+            logs = result.Items;
+            totalPages = result.TotalPages;
+            totalCount = result.TotalCount;
+
+            if (UserId.HasValue)
+            {
+                userDisplayName = logs.FirstOrDefault()?.UserName;
+                if (string.IsNullOrWhiteSpace(userDisplayName))
+                {
+                    var user = await UserManagementService.GetUserByIdAsync(UserId.Value);
+                    if (user != null)
+                    {
+                        userDisplayName = !string.IsNullOrWhiteSpace(user.FullName) ? user.FullName : user.Email;
+                    }
+                }
+            }
+            else
+            {
+                userDisplayName = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"{Localizer["FailedToLoadLogs"]}: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int newPageIndex)
+    {
+        var uri = NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["page"] = newPageIndex > 1 ? newPageIndex : null,
+            ["userId"] = UserId,
+            ["entityName"] = EntityName,
+            ["entityId"] = EntityId
+        });
+        
+        NavigationManager.NavigateTo(uri);
+    }
+
+    private string? GetEntityUrl(string? entityName, string? entityId)
+    {
+        if (string.IsNullOrWhiteSpace(entityName))
+            return null;
+
+        var name = entityName.Trim().ToLowerInvariant();
+
+        return name switch
+        {
+            "user" or "users" => !string.IsNullOrEmpty(entityId) ? $"/admin/users/edit/{entityId}" : null,
+            "role" or "roles" => !string.IsNullOrEmpty(entityId) ? $"/admin/roles/edit/{entityId}" : null,
+            "lookup" or "lookups" => !string.IsNullOrEmpty(entityId) ? $"/admin/lookups/edit/{entityId}" : null,
+            // museum entries removed
+            "systemsetting" or "systemsettings" or "settings" => "/admin/settings",
+            _ => null
+        };
+    }
+
+    private void ResetLogs()
+    {
+        NavigationManager.NavigateTo("/admin/logs");
+    }
+}
