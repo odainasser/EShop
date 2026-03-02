@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Identity;
 
-public class ApplicationRole : IdentityRole<Guid>
+public class ApplicationRole : IdentityRole
 {
     public string NameAr { get; set; } = string.Empty;
     public string? DescriptionEn { get; set; }

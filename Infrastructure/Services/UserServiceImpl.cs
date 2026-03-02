@@ -2,10 +2,11 @@ using Application.Common.Models;
 using Application.Features.Users;
 using Application.Services;
 using Domain.Exceptions;
+using Eshop.Domain.Entities.People;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Domain.Constants;
+
 using Application.Common.Interfaces;
 using Application.Common.Behaviors;
 using FluentValidation.Results;
@@ -138,7 +139,7 @@ public class UserService : IUserService
             {
                 // Prevent creating users with the Client role from the admin UI.
                 // Clients must register through the registration form.
-                if (string.Equals(role.Name, Roles.Client, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(role.Name, "Client", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException("Cannot assign Client role from admin panel. Clients must register through the registration form.");
                 }
@@ -163,7 +164,7 @@ public class UserService : IUserService
         var isSelfUpdate = currentUserId == userId;
 
         // Prevent modifying system users by other users (but allow self-update)
-        if (user.IsSystemUser && !isSelfUpdate)
+        if (user.IsAdmin && !isSelfUpdate)
         {
             throw new SystemUserModificationException();
         }
@@ -206,7 +207,7 @@ public class UserService : IUserService
         }
 
         // Prevent deleting system users
-        if (user.IsSystemUser)
+        if (user.IsAdmin)
         {
             throw new SystemUserModificationException();
         }
@@ -227,13 +228,13 @@ public class UserService : IUserService
         }
 
         // Prevent changing roles for system users who are Administrators
-        if (user.IsSystemUser && await _userManager.IsInRoleAsync(user, Roles.Administrator))
+        if (user.IsAdmin && await _userManager.IsInRoleAsync(user, "Administrator"))
         {
             throw new SystemUserModificationException();
         }
 
         // Prevent changing roles for users who have the Client role
-        if (await _userManager.IsInRoleAsync(user, Roles.Client))
+        if (await _userManager.IsInRoleAsync(user, "Client"))
         {
             throw new InvalidOperationException("Cannot change the role of a client user.");
         }
@@ -250,7 +251,7 @@ public class UserService : IUserService
             if (role != null)
             {
                 // Prevent assigning Client role from admin panel - clients are created via registration only
-                if (string.Equals(role.Name, Roles.Client, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(role.Name, "Client", StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException("Cannot assign Client role from admin panel. Clients must register through the registration form.");
                 }
@@ -317,7 +318,7 @@ public class UserService : IUserService
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
             Roles = roleDtos,
-            IsSystemUser = user.IsSystemUser,
+            IsSystemUser = user.IsAdmin,
             AvatarUrl = avatarUrl
         };
     }

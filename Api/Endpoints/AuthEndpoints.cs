@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Features.Auth;
+using Eshop.Domain.Entities.People;
 using Microsoft.AspNetCore.Identity;
 using Infrastructure.Configuration;
 using Infrastructure.Identity;

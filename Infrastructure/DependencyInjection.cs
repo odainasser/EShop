@@ -1,6 +1,7 @@
 using System.Text;
 using Application.Common.Interfaces;
 using Application.Services;
+using Eshop.Domain.Entities.People;
 using Infrastructure.Configuration;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
